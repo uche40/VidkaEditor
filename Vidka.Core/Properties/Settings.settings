@@ -1,0 +1,21 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="Vidka.Core.Properties" GeneratedClassName="Settings">
+  <Profiles />
+  <Settings>
+    <Setting Name="ErrorLogFilename" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">zerror.log</Value>
+    </Setting>
+    <Setting Name="ProjBackupFile" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">zProjBackup.xml</Value>
+    </Setting>
+    <Setting Name="DataNearProject" Type="System.Boolean" Scope="Application">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="FileExtensionsVideo" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">.avi|.mp4|.mov|.mts|.mkv</Value>
+    </Setting>
+    <Setting Name="FileExtensionsAudio" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">.wav|.mp3|.ogg</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>

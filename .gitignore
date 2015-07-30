@@ -41,3 +41,16 @@ $RECYCLE.BIN/
 Network Trash Folder
 Temporary Items
 .apdisk
+
+# compile and build directories
+#-----------------------------
+ConsoleTests/bin/*
+ConsoleTests/obj/*
+Vidka.Components/bin/*
+Vidka.Components/obj/*
+Vidka.Core/bin/*
+Vidka.Core/obj/*
+Vidka.MainForm/bin/*
+Vidka.MainForm/obj/*
+
+
