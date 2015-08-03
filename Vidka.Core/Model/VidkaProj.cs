@@ -29,7 +29,8 @@ namespace Vidka.Core.Model
 		public List<VidkaClipAudio> ClipsAudio { get; set; }
 		
 		/// <summary>
-		/// call this whenever a new clip is added and frame rate changes to set helper variables
+		/// call this whenever a new clip is added and frame rate changes.
+		/// This will set all the helper variables in every clip
 		/// </summary>
 		public void Compile()
 		{
@@ -44,23 +45,27 @@ namespace Vidka.Core.Model
 	{
 		public string FileName { get; set; }
 		/// <summary>
-		/// position (frames) wrt project
+		/// position (frames) wrt file
 		/// </summary>
 		public long FrameStart { get; set; }
 		/// <summary>
-		/// position (frames) wrt project
+		/// position (frames) wrt file
 		/// </summary>
 		public long FrameEnd { get; set; }
+		/// <summary>
+		/// Stored in seconds, but we will only use it to convert to FileLengthFrames with proj-fps
+		/// </summary>
 		public double? FileLengthSec { get; set; }
 
-		// helper
+		// helpers
+
 		/// <summary>
 		/// (FrameEnd - FrameStart) of this clip
 		/// </summary>
 		[XmlIgnore]
 		public long LengthFrameCalc { get { return FrameEnd - FrameStart; } }
 		/// <summary>
-		/// Needs to be set by multiplying FileLengthSec by frame rate of proj
+		/// Needs to be set by multiplying FileLengthSec by proj-fps
 		/// </summary>
 		[XmlIgnore]
 		public long FileLengthFrames { get; set; }
@@ -89,7 +94,7 @@ namespace Vidka.Core.Model
 		public VidkaClipAudio() { }
 
 		/// <summary>
-		/// position (frames) wrt audio file of the beginning of audio clip
+		/// position (frames) wrt project's beginning of the start of this audio clip
 		/// </summary>
 		public int FrameOffset { get; set; }
 

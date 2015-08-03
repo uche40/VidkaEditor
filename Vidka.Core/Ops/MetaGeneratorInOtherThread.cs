@@ -26,65 +26,19 @@ namespace Vidka.Core.Ops
 		public event WaveformReadyHandler WaveformReady;
 		#endregion
 
-		// helpers and private
-		private Thread curThread;
-		private Queue<Action> queue;
 		private VidkaFileMapping fileMapping;
+		private TaskQueueInOtherThread taskThread;
 
 		public MetaGeneratorInOtherThread(VidkaFileMapping fileMapping)
 		{
-			queue = new Queue<Action>();
 			this.fileMapping = fileMapping;
+			taskThread = new TaskQueueInOtherThread();
 		}
 
-		/// <summary>
-		/// Will spawn a new thread if the current one is not in progress
-		/// </summary>
-		private void QueueThisUpPlease(Action item)
-		{
-			lock (queue) {
-				queue.Enqueue(item);
-				if (curThread == null)
-				{
-					curThread = new Thread(() =>
-					{
-						ProcessQueue();
-					});
-					curThread.Start();
-				}			
-
-			}
-		}
-
-		private void ProcessQueue()
-		{
-			Action item = null;
-			while ((item = DequeueSynchronizedOrNull()) != null)
-			{
-				item();
-			}
-			lock (queue)
-			{
-				curThread = null;
-			}
-		}
-
-		/// <summary>
-		/// lock (queue) { return queue.Any() ? queue.Dequeue() : null; }
-		/// </summary>
-		private Action DequeueSynchronizedOrNull()
-		{
-			lock (queue)
-			{
-				return queue.Any()
-					? queue.Dequeue()
-					: null;
-			}
-		}
 
 		internal void RequestMeta(string filename)
 		{
-			QueueThisUpPlease(() =>
+			taskThread.QueueThisUpPlease(() =>
 			{
 				var filenameMeta = fileMapping.AddGetMetaFilename(filename);
 				fileMapping.MakeSureDataFolderExists(filenameMeta);
@@ -110,7 +64,7 @@ namespace Vidka.Core.Ops
 
 		internal void RequestThumbsAndWave(string filename)
 		{
-			QueueThisUpPlease(() =>
+			taskThread.QueueThisUpPlease(() =>
 			{
 				var filenameThumb = fileMapping.AddGetThumbnailFilename(filename);
 				var filenameWave = fileMapping.AddGetWaveFilenameDat(filename);

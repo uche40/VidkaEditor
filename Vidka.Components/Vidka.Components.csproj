@@ -45,6 +45,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="EditorDrawOps.cs" />
+    <Compile Include="ImageCacheManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ShitboxState.cs" />
     <Compile Include="VideoShitbox.cs">

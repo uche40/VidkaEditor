@@ -109,20 +109,21 @@ namespace Vidka.Core
 		{
 			var framesSampleQuarterScreen = (int)Dimdim.convert_AbsX2Frame(w / 4);
 			dragAndDropMan.NewFilesDragged(filenames, framesSampleQuarterScreen);
-			UiObjects.ClearStateChangeFlag();
+			___UiTransactionBegin();
 			UiObjects.InitDraggyFromDragAndDropMan(dragAndDropMan, framesSampleQuarterScreen, mouseX);
-			RepaintIfNeedBe();
+			___UiTransactionEnd();
 		}
 
 		public void MediaFileDragMove(int x)
 		{
-			UiObjects.ClearStateChangeFlag();
+			___UiTransactionBegin();
 			UiObjects.SetDraggyCoordinates(mouseX: x);
-			RepaintIfNeedBe();
+			___UiTransactionEnd();
 		}
 
 		public void MediaFileDragDrop(string[] filenames)
 		{
+			___UiTransactionBegin();
 			if (dragAndDropMan.Mode == DragAndDropManagerMode.DraggingVideo)
 			{
 				var vclips = dragAndDropMan.FinalizeDragAndMakeVideoClips();
@@ -139,7 +140,7 @@ namespace Vidka.Core
 				CanvasWidthNeedsToBeUpdated();
 			}
 			UiObjects.ClearDraggy();
-			editor.PleaseRepaint();
+			___UiTransactionEnd();
 		}
 
 		public void CancelDragDrop()
@@ -152,19 +153,19 @@ namespace Vidka.Core
 		private void dragAndDropMan_MetaReadyForDraggy(string filename, VideoMetadataUseful meta)
 		{
 			var newLengthFrames = dragAndDropMan.Draggies.FirstOrDefault().LengthInFrames;
-			UiObjects.ClearStateChangeFlag();
+			___UiTransactionBegin();
 			UiObjects.SetDraggyCoordinates(
 				text: "" + newLengthFrames + "\nframes",
 				frameLength: newLengthFrames
 			);
-			editor.PleaseRepaint();
+			___UiTransactionEnd();
 		}
 
 		private void dragAndDropMan_MetaReadyForOutstandingVideo(VidkaClipVideo vclip, VideoMetadataUseful meta)
 		{
-			cxzxc("outst meta: " + meta.VideoDurationFrames);
+			___UiTransactionBegin();
 			CanvasWidthNeedsToBeUpdated();
-			editor.PleaseRepaint();
+			___UiTransactionEnd();
 		}
 
 		private void dragAndDropMan_MetaReadyForOutstandingAudio(VidkaClipAudio aclip, VideoMetadataUseful meta)
@@ -176,38 +177,6 @@ namespace Vidka.Core
 		{
 			editor.PleaseRepaint();
 		}
-
-		
-
-		//	// generate thumbs and shit
-		//	var filenameXml = Proj.Mapping.AddGetMetaFilename(filename);
-		//	var filenameThumb = Proj.Mapping.AddGetThumbnailFilename(filename);
-		//	var filenameWaveDat = Proj.Mapping.AddGetWaveFilenameDat(filename);
-		//	var filenameWaveJpg = Proj.Mapping.AddGetWaveFilenameJpg(filename);
-
-		//	metaGenerator.QueueThisUpPlease(new MetaGeneratorInOtherThread_QueueRequest {
-		//		Filename = filename,
-		//		FilenameThumb = filenameThumb,
-		//		FilenameWaveDat = filenameWaveDat,
-		//		FilenameWaveJpg = filenameWaveJpg,
-		//	});
-		//}
-
-		// TODO: reuse this code in listeners for dragAndDropManager
-		//private void metaGenerator_OneItemFinished(MetaGeneratorInOtherThread_QueueRequest item)
-		//{
-		//	// just repaint the damn thing
-		//	editor.PleaseRepaint();
-		//}
-		//private void genericListener_AppendToConsole(VidkaConsoleLogLevel level, string text)
-		//{
-		//	editor.AppendToConsole(level, text);
-		//}
-		//private void metaGenerator_MetaGeneratorDone(MetaGeneratorInOtherThread_QueueRequest item, VideoMetadataUseful meta)
-		//{
-		//	UiObjects.SetDraggyCoordinates(frameLength: meta.VideoDurationFrames);
-		//	editor.PleaseRepaint();
-		//}
 		
 		#endregion
 
@@ -232,8 +201,10 @@ namespace Vidka.Core
 
 		public void LoadProjFromFile(string filename)
 		{
+			curFilename = filename;
+
 			// load...
-			Proj = ioOps.LoadProjFromFile(filename);
+			Proj = ioOps.LoadProjFromFile(curFilename);
 
 			// init...
 			Proj.Compile(); // set up filenames, etc, dunno
@@ -243,9 +214,11 @@ namespace Vidka.Core
 			dragAndDropMan.SetProj(Proj);
 			setProjToAllEditOps(Proj);
 
-			// repaint...
-			CanvasWidthNeedsToBeUpdated();
+			// update UI...
+			___UiTransactionBegin();
 			UiObjects.SetCurrentMarkerFrame(0);
+			CanvasWidthNeedsToBeUpdated();
+			___UiTransactionEnd();
 		}
 
 		public void ExportToAvs()
@@ -287,7 +260,9 @@ namespace Vidka.Core
 
 		public void UiInitialized()
 		{
+			___UiTransactionBegin();
 			CanvasWidthNeedsToBeUpdated();
+			___UiTransactionEnd();
 			ShowFrameInVideoPlayer(UiObjects.CurrentMarkerFrame);
 		}
 
@@ -301,7 +276,7 @@ namespace Vidka.Core
 		{
 			if (mouseMoveLocked)
 				return;
-			UiObjects.ClearStateChangeFlag();
+			___UiTransactionBegin();
 			mouseX = x;
 			var timeline = Dimdim.collision_whatTimeline(y, h);
 			UiObjects.SetTimelineHover(timeline);
@@ -336,25 +311,32 @@ namespace Vidka.Core
 					break;
 			}
 			//cxzxc("t-hvr:" + UiObjects.TrimHover.ToString() + ",clip:" + UiObjects.CurrentVideoClipHover.cxzxc());
-			RepaintIfNeedBe();
+			___UiTransactionEnd();
 		}
 
 		public void MouseLeave()
 		{
 			if (mouseMoveLocked)
 				return;
-			UiObjects.ClearStateChangeFlag();
+			___UiTransactionBegin();
 			UiObjects.SetTimelineHover(ProjectDimensionsTimelineType.None);
 			UiObjects.SetHoverVideo(null);
-			RepaintIfNeedBe();
+			___UiTransactionEnd();
 		}
 
 		//------------------------ helpers -------------------------------
 
 		/// <summary>
-		/// Call this at the end of every serious interaction method
+		/// Call this at the begging of every method that changes the state of UI
 		/// </summary>
-		private void RepaintIfNeedBe() {
+		private void ___UiTransactionBegin() {
+			UiObjects.ClearStateChangeFlag();
+		}
+
+		/// <summary>
+		/// Call this at the end of every method that changes the state of UI
+		/// </summary>
+		private void ___UiTransactionEnd() {
 			if (UiObjects.DidSomethingChange())
 				editor.PleaseRepaint();
 		}
@@ -412,7 +394,7 @@ namespace Vidka.Core
 		private void CanvasWidthNeedsToBeUpdated() {
 			var widthNeedsToBeSet = Dimdim.getTotalWidthPixelsForceRecalc();
 			editor.UpdateCanvasWidth(widthNeedsToBeSet);
-			editor.PleaseRepaint();
+			UiObjects.UiStateChanged();
 		}
 
 		/// <summary>
@@ -509,13 +491,38 @@ namespace Vidka.Core
 
 		#region ============================= editing =============================
 
+		public void Redo()
+		{
+			if (!redoStack.Any())
+				return;
+			var action = redoStack.Pop();
+			action.Redo();
+			undoStack.Push(action);
+		}
+		public void Undo()
+		{
+			if (!undoStack.Any())
+				return;
+			var action = undoStack.Pop();
+			action.Undo();
+			redoStack.Push(action);
+		}
+		public void AddUndableAction(UndoableAction action)
+		{
+			undoStack.Push(action);
+			redoStack.Clear();
+			action.Redo();
+		}
+		private Stack<UndoableAction> undoStack = new Stack<UndoableAction>();
+		private Stack<UndoableAction> redoStack = new Stack<UndoableAction>();
+
 		#region ---------------------- mouse dragging operations -----------------------------
 
 		public void LeftRightArrowKeys(Keys keyData, int w)
 		{
 			if (CurEditOp != null)
 			{
-				UiObjects.ClearStateChangeFlag();
+				___UiTransactionBegin();
 				CurEditOp.KeyPressedArrow(keyData);
 			}
 			int frameDelta = ArrowKey2FrameDelta(keyData);
@@ -527,7 +534,7 @@ namespace Vidka.Core
 					updateCurFrameMarkerPosition(frameDelta, w);
 			}
 			if (CurEditOp != null)
-				RepaintIfNeedBe();
+				___UiTransactionEnd();
 		}
 
 		public void MouseDragStart(int x, int y, int w, int h)
@@ -541,13 +548,37 @@ namespace Vidka.Core
 			}
 
 			mouseX = x; // prob not needed, since it is always set in mouseMove, but whatever
-			UiObjects.ClearStateChangeFlag();
+			___UiTransactionBegin();
 
 			if (CurEditOp == null || CurEditOp.DoesNewMouseDragCancelMe)
 			{
 				// unless we have an active op that requests this drag action,
 				// use the mouse press to calculate click collision
-				CheckCollisionOnMousePress(x, y, w, h);
+				var timeline = Dimdim.collision_whatTimeline(y, h);
+				UiObjects.SetTimelineHover(timeline);
+				switch (timeline) {
+					case ProjectDimensionsTimelineType.Main:
+						var clip = Dimdim.collision_main(x);
+						UiObjects.SetActiveVideo(clip, Proj);
+						break;
+					case ProjectDimensionsTimelineType.Original:
+						break;
+					case ProjectDimensionsTimelineType.Audios:
+						var aclip = Dimdim.collision_audio(x);
+						UiObjects.SetActiveAudio(aclip);
+						break;
+					default:
+						UiObjects.SetActiveVideo(null, Proj);
+						break;
+				}
+
+				var cursorFrame = (timeline == ProjectDimensionsTimelineType.Original && UiObjects.CurrentClip != null)
+					? (UiObjects.CurrentClipFrameAbsPos ?? 0) - UiObjects.CurrentClip.FrameStart + UiObjects.CurrentClip.FileLengthFrames * x / w
+					: Dimdim.convert_ScreenX2Frame(x);
+				// NOTE: if you want for negative frames to show original clip's thumb in player, remove this first  
+				if (cursorFrame < 0)
+					cursorFrame = 0;
+				UiObjects.SetCurrentMarkerFrame(cursorFrame);
 				
 				// if previous op is still active and it allows us to 
 				CurEditOp = WhatMouseDragOperationDoWeGoInto();
@@ -559,24 +590,26 @@ namespace Vidka.Core
 			}
 			if (CurEditOp != null)
 				CurEditOp.MouseDragStart(x, y, w, h);
-			RepaintIfNeedBe();
+			___UiTransactionEnd();
+
+			ShowFrameInVideoPlayer(UiObjects.CurrentMarkerFrame);
 		}
 
 		/// <param name="deltaX">relative to where the mouse was pressed down</param>
 		/// <param name="deltaY">relative to where the mouse was pressed down</param>
 		public void MouseDragged(int x, int y, int deltaX, int deltaY, int w, int h)
 		{
-			UiObjects.ClearStateChangeFlag();
+			___UiTransactionBegin();
 			if (CurEditOp != null)
 				CurEditOp.MouseDragged(x, y, deltaX, deltaY, w, h);
-			RepaintIfNeedBe();
+			___UiTransactionEnd();
 		}
 
 		/// <param name="deltaX">relative to where the mouse was pressed down</param>
 		/// <param name="deltaY">relative to where the mouse was pressed down</param>
 		public void MouseDragEnd(int x, int y, int deltaX, int deltaY, int w, int h)
 		{
-			UiObjects.ClearStateChangeFlag();
+			___UiTransactionBegin();
 			if (CurEditOp != null)
 			{
 				CurEditOp.MouseDragEnd(x, y, deltaX, deltaY, w, h);
@@ -584,27 +617,27 @@ namespace Vidka.Core
 					CapitulateCurOp();
 				}
 			}
-			RepaintIfNeedBe();
+			___UiTransactionEnd();
 		}
 
 		public void EnterPressed()
 		{
 			if (CurEditOp == null)
 				return;
-			UiObjects.ClearStateChangeFlag();
+			___UiTransactionBegin();
 			CurEditOp.EnterPressed();
 			if (CurEditOp.IsDone)
 				CapitulateCurOp();
-			RepaintIfNeedBe();
+			___UiTransactionEnd();
 		}
 
 		public void EscapePressed()
 		{
 			if (CurEditOp == null)
 				return;
-			UiObjects.ClearStateChangeFlag();
+			___UiTransactionBegin();
 			CapitulateCurOp();
-			RepaintIfNeedBe();
+			___UiTransactionEnd();
 		}
 
 		/// <summary>
@@ -617,10 +650,113 @@ namespace Vidka.Core
 
 		#endregion
 
+		#region ---------------------- split clips -----------------------------
+
+		public void SplitCurClipVideo()
+		{
+			VidkaClipVideo clip;
+			int clipIndex = 0;
+			long frameOffsetStartOfVideo = 0;
+			if (!DoVideoSplitCalculations(out clip, out clipIndex, out frameOffsetStartOfVideo))
+				return;
+			var clip_oldStart = clip.FrameStart;
+			var clipNewOnTheLeft = clip.MakeCopy();
+			clipNewOnTheLeft.FrameEnd = frameOffsetStartOfVideo; // remember, frameOffset is returned relative to start of the media file
+			AddUndableAction(new UndoableAction
+			{
+				Undo = () =>
+				{
+					Proj.ClipsVideo.Remove(clipNewOnTheLeft);
+					clip.FrameStart = clip_oldStart;
+					editor.PleaseRepaint();
+				},
+				Redo = () =>
+				{
+					Proj.ClipsVideo.Insert(clipIndex, clipNewOnTheLeft);
+					clip.FrameStart = frameOffsetStartOfVideo;
+					editor.PleaseRepaint();
+				}
+			});
+		}
+
+		public void SplitCurClipVideo_DeleteLeft()
+		{
+			VidkaClipVideo clip;
+			int clipIndex = 0;
+			long frameOffsetStartOfVideo = 0;
+			if (!DoVideoSplitCalculations(out clip, out clipIndex, out frameOffsetStartOfVideo))
+				return;
+			var clip_oldStart = clip.FrameStart;
+			AddUndableAction(new UndoableAction
+			{
+				Undo = () =>
+				{
+					clip.FrameStart = clip_oldStart;
+					CanvasWidthNeedsToBeUpdated();
+				},
+				Redo = () =>
+				{
+					clip.FrameStart = frameOffsetStartOfVideo;
+					CanvasWidthNeedsToBeUpdated();
+				}
+			});
+		}
+
+		public void SplitCurClipVideo_DeleteRight()
+		{
+			VidkaClipVideo clip;
+			int clipIndex = 0;
+			long frameOffsetStartOfVideo = 0;
+			if (!DoVideoSplitCalculations(out clip, out clipIndex, out frameOffsetStartOfVideo))
+				return;
+			var clip_oldEnd = clip.FrameEnd;
+			AddUndableAction(new UndoableAction
+			{
+				Undo = () =>
+				{
+					clip.FrameEnd = clip_oldEnd;
+					CanvasWidthNeedsToBeUpdated();
+				},
+				Redo = () =>
+				{
+					clip.FrameEnd = frameOffsetStartOfVideo;
+					CanvasWidthNeedsToBeUpdated();
+				}
+			});
+		}
+
+		/// <summary>
+		/// Returns clip being split, its index within video timeline
+		/// and how many frames from its FrameStart to cut
+		/// </summary>
+		private bool DoVideoSplitCalculations(
+			out VidkaClipVideo clip,
+			out int clipIndex,
+			out long frameOffsetStartOfVideo)
+		{
+			clip = null;
+			clipIndex = Proj.GetVideoClipIndexAtFrame(UiObjects.CurrentMarkerFrame, out frameOffsetStartOfVideo);
+			if (clipIndex == -1)
+			{
+				cxzxc("No clip here... Cannot split!");
+				return false;
+			}
+			clip = Proj.GetVideoClipAtIndex(clipIndex);
+			if (frameOffsetStartOfVideo == clip.FrameStart)
+			{
+				cxzxc("On the seam... Cannot split!");
+				return false;
+			}
+			return true;
+		}
+
+		#endregion
+		
 		#region ---------------------- misc operations -----------------------------
 
 		public void DeleteCurSelectedClip()
 		{
+			___UiTransactionBegin();
 			if (UiObjects.CurrentVideoClip != null)
 			{
 				Proj.ClipsVideo.Remove(UiObjects.CurrentVideoClip);
@@ -635,68 +771,7 @@ namespace Vidka.Core
 				UiObjects.SetHoverAudio(null);
 				CanvasWidthNeedsToBeUpdated();
 			}
-		}
-
-		#endregion
-
-		#region ---------------------- split clips -----------------------------
-
-		public void SplitCurClipVideo()
-		{
-			VidkaClipVideo left, right;
-			SplitCurClipVideo(out left, out right);
-			editor.PleaseRepaint();
-		}
-
-		public void SplitCurClipVideo_DeleteLeft()
-		{
-			VidkaClipVideo left, right;
-			SplitCurClipVideo(out left, out right);
-			Proj.ClipsVideo.Remove(left);
-			CanvasWidthNeedsToBeUpdated();
-		}
-
-		public void SplitCurClipVideo_DeleteRight()
-		{
-			VidkaClipVideo left, right;
-			SplitCurClipVideo(out left, out right);
-			Proj.ClipsVideo.Remove(right);
-			if (right == UiObjects.CurrentClip) {
-				UiObjects.SetActiveVideo(left, Proj);
-				UiObjects.SetHoverVideo(null);
-			}
-			CanvasWidthNeedsToBeUpdated();
-		}
-
-		/// <summary>
-		/// left will be copied and inserted before the original clip.
-		/// right will be assigned to original clip.
-		/// Both will be trimmed to accomodate the split action...
-		/// </summary>
-		private void SplitCurClipVideo(out VidkaClipVideo left, out VidkaClipVideo right)
-		{
-			left = right = null;
-			long frameOffset;
-			var clipIndex = Proj.GetVideoClipIndexAtFrame(UiObjects.CurrentMarkerFrame, out frameOffset);
-			if (clipIndex == -1)
-			{
-				cxzxc("No clip here... Cannot split!");
-				return;
-			}
-			var vclip = Proj.GetVideoClipAtIndex(clipIndex);
-			if (frameOffset == vclip.FrameStart)
-			{
-				cxzxc("On the seam... Cannot split!");
-				return;
-			}
-			right = vclip;
-			left = vclip.MakeCopy();
-			// remember, frameOffset is returned relative to start of the media file
-			left.FrameEnd = frameOffset;
-			right.FrameStart = frameOffset;
-			//cxzxc("left.FrameEnd=" + left.FrameEnd);
-			//cxzxc("right.FrameStart=" + right.FrameStart);
-			Proj.ClipsVideo.Insert(clipIndex, left);
+			___UiTransactionEnd();
 		}
 
 		#endregion
@@ -721,40 +796,6 @@ namespace Vidka.Core
 			CurEditOp = null;
 			mouseMoveLocked = false;
 			editor.AppendToConsole(VidkaConsoleLogLevel.Info, "Edit mode: none");
-		}
-
-		/// <summary>
-		/// This used to be called on mouse click but then there was a conflict b/w click and mouse-up
-		/// </summary>
-		private void CheckCollisionOnMousePress(int x, int y, int w, int h)
-		{
-			var timeline = Dimdim.collision_whatTimeline(y, h);
-			UiObjects.SetTimelineHover(timeline);
-			switch (timeline)
-			{
-				case ProjectDimensionsTimelineType.Main:
-					var clip = Dimdim.collision_main(x);
-					UiObjects.SetActiveVideo(clip, Proj);
-					break;
-				case ProjectDimensionsTimelineType.Original:
-					break;
-				case ProjectDimensionsTimelineType.Audios:
-					var aclip = Dimdim.collision_audio(x);
-					UiObjects.SetActiveAudio(aclip);
-					break;
-				default:
-					UiObjects.SetActiveVideo(null, Proj);
-					break;
-			}
-
-			var cursorFrame = (timeline == ProjectDimensionsTimelineType.Original && UiObjects.CurrentClip != null)
-				? (UiObjects.CurrentClipFrameAbsPos ?? 0) - UiObjects.CurrentClip.FrameStart + UiObjects.CurrentClip.FileLengthFrames * x / w
-				: Dimdim.convert_ScreenX2Frame(x);
-			// NOTE: if you want for negative frames to show original clip's thumb in player, remove this first  
-			if (cursorFrame < 0)
-				cursorFrame = 0;
-			UiObjects.SetCurrentMarkerFrame(cursorFrame);
-			ShowFrameInVideoPlayer(UiObjects.CurrentMarkerFrame);
 		}
 
 		/// <summary>

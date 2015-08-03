@@ -56,6 +56,12 @@ namespace Vidka.Core
 			stateChanged = false;
 		}
 		/// <summary>
+		/// Call if a repaint is needed anyway, regardless
+		/// </summary>
+		public void UiStateChanged() {
+			stateChanged = true;
+		}
+		/// <summary>
 		/// Call this at the end of every serious interaction method.
 		/// if this returns true, then you probably need to repaint. 
 		/// </summary>

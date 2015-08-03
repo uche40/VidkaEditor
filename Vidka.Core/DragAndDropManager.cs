@@ -73,6 +73,7 @@ namespace Vidka.Core
 					_draggies.Add(new DragAndDropMediaFile(Proj) {
 						Filename = filename,
 						NFakeFrames = nFakeFrames,
+						Mode = Mode,
 					});
 					metaGenerator.RequestMeta(filename);
 					metaGenerator.RequestThumbsAndWave(filename);
@@ -166,8 +167,9 @@ namespace Vidka.Core
 				if (outstandingMaybeVid != null)
 				{
 					// TODO: handle variable fps, fps == proj.fps and counted frames for PENTAX avis
-					outstandingMaybeVid.FileLengthSec = meta.VideoDurationSec;
-					var projFramesThisOne = Proj.SecToFrame(outstandingMaybeVid.FileLengthSec ?? 0); // remember, this clip could be different fps, we need proj's fps
+					outstandingMaybeVid.FileLengthSec = meta.GetVideoDurationSec(Proj.FrameRate);
+					// remember, this clip could be different fps, we need proj's fps
+					var projFramesThisOne = Proj.SecToFrame(outstandingMaybeVid.FileLengthSec ?? 0); 
 					outstandingMaybeVid.FileLengthFrames = projFramesThisOne;
 					outstandingMaybeVid.FrameEnd = projFramesThisOne;
 					outstandingMaybeVid.IsNotYetAnalyzed = false;
@@ -179,8 +181,10 @@ namespace Vidka.Core
 				var outstandingMaybeAud = outstandingAudio.FirstOrDefault(x => x.FileName == filename);
 				if (outstandingMaybeAud != null)
 				{
-					outstandingMaybeAud.FileLengthSec = Proj.FrameToSec(meta.VideoDurationFrames);
-					outstandingMaybeAud.FrameEnd = meta.VideoDurationFrames;
+					outstandingMaybeAud.FileLengthSec = meta.AudioDurationSec;
+					var projFramesThisOne = Proj.SecToFrame(outstandingMaybeAud.FileLengthSec ?? 0);
+					outstandingMaybeAud.FileLengthFrames = projFramesThisOne;
+					outstandingMaybeAud.FrameEnd = projFramesThisOne;
 					outstandingAudio.Remove(outstandingMaybeAud);
 					if (MetaReadyForOutstandingAudio != null)
 						MetaReadyForOutstandingAudio(outstandingMaybeAud, meta);
@@ -259,10 +263,16 @@ namespace Vidka.Core
 			this.proj = proj;
 		}
 		public string Filename { get; set; }
+		public DragAndDropManagerMode Mode { get; set; }
 		public long NFakeFrames { get; set; }
 		public VideoMetadataUseful Meta { get; set; }
 		public long LengthInFrames { get {
-			return (Meta != null) ? proj.SecToFrame(Meta.VideoDurationSec) : NFakeFrames;
+			if (Meta == null)
+				return NFakeFrames;
+			double durationSec = (Mode == DragAndDropManagerMode.DraggingVideo)
+				? Meta.GetVideoDurationSec(proj.FrameRate)
+				: Meta.AudioDurationSec;
+			return proj.SecToFrame(durationSec);
 		} }
 		//public double LengthInSec { get {
 		//	return (Meta != null) ? Meta.VideoDurationSec : proj.FrameToSec(NFakeFrames);

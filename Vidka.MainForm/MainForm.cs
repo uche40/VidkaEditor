@@ -25,6 +25,11 @@ namespace Vidka.MainForm {
 
 		private void CustomLayout()
 		{
+			var resolutionW = Screen.PrimaryScreen.Bounds.Width;
+			var resolutionH = Screen.PrimaryScreen.Bounds.Height;
+			var sidebarW = resolutionW * 500 / 3200;
+			var playerH = resolutionH * 400 / 1800;
+
 			var panelLeft = new Panel();
 			this.Controls.Remove(this.txtConsole);
 			this.Controls.Remove(this.vidkaPreviewPlayer);
@@ -33,11 +38,14 @@ namespace Vidka.MainForm {
 			panelLeft.Controls.Add(this.vidkaPreviewPlayer);
 			this.txtConsole.Dock = DockStyle.Fill;
 			this.vidkaPreviewPlayer.Dock = DockStyle.Top;
-			this.vidkaPreviewPlayer.MinimumSize = new Size(500, 400);
+			this.vidkaPreviewPlayer.MinimumSize = new Size(sidebarW, playerH);
+			this.vidkaPreviewPlayer.MaximumSize = new Size(sidebarW, playerH);
 			this.videoShitbox.Dock = DockStyle.Fill;
 			panelLeft.Dock = DockStyle.Right;
-			panelLeft.MinimumSize = new Size(500, 200);
+			panelLeft.MinimumSize = new Size(sidebarW, 200);
 			this.Controls.Add(panelLeft);
+			this.Width = (int)(resolutionW / 1.5f);
+			this.Height = (int)(resolutionH / 1.5f);
 		}
 
 		private void Form1_DragEnter(object sender, DragEventArgs e) {

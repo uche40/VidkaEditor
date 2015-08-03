@@ -20,17 +20,21 @@ namespace Vidka.Components {
 		private RichTextBox txtConsole;
 		private bool isControlLoaded = false;
 		public EditorLogic Logic { get; private set; }
+		private ImageCacheManager imageMan;
 		private EditorDrawOps drawOps;
 		private bool mouseDown;
 		private int prevDragX = 0; // for drag/drop files
 		private int mouseDownX, mouseDownY;
+		private long repaintCount = 0;
 
 		// singletonhack
 		public static IVidkaConsole ConsoleSingleton;
 
 		public VideoShitbox() {
 			InitializeComponent();
-			drawOps = new EditorDrawOps();
+			imageMan = new ImageCacheManager();
+			imageMan.ImagesReady += imageMan_ImagesReady;
+			drawOps = new EditorDrawOps(imageMan);
 			mouseDown = false;
 			ConsoleSingleton = this;
 		}
@@ -150,6 +154,10 @@ namespace Vidka.Components {
 				Logic.EnterPressed();
 			else if (e.KeyCode == Keys.Escape)
 				Logic.EscapePressed();
+			else if (e.Control && e.KeyCode == Keys.Z)
+				Logic.Undo();
+			else if (e.Control && e.KeyCode == Keys.Y)
+				Logic.Redo();
 			else if (e.KeyCode == Keys.S)
 				Logic.SplitCurClipVideo();
 			else if (e.KeyCode == Keys.A)
@@ -229,11 +237,15 @@ namespace Vidka.Components {
 		}
 
 		public void UpdateCanvasWidth(int w) {
-			this.AutoScrollMinSize = new Size(w, 50); // +100???
+			InvokeOrNot_IDontGiveAShit_JustDoIt(() => {
+				this.AutoScrollMinSize = new Size(w, 50); // +100???
+			});
 		}
 
 		public void UpdateCanvasHorizontalScroll(int scrollX) {
-			this.AutoScrollPosition = new Point(scrollX, 0);
+			InvokeOrNot_IDontGiveAShit_JustDoIt(() => {
+				this.AutoScrollPosition = new Point(scrollX, 0);
+			});
 		}
 
 		public string OpenProjectSaveDialog() {
@@ -255,20 +267,15 @@ namespace Vidka.Components {
 
 		public void AppendToConsole(VidkaConsoleLogLevel level, string text)
 		{
-			if (txtConsole == null)
-				return;
-			if (InvokeRequired)
+			InvokeOrNot_IDontGiveAShit_JustDoIt(() =>
 			{
-				Invoke(new MethodInvoker(delegate
-				{
-					AppendToConsole(level, text);
-				}));
-				return;
-			}
-
-			// TODO: implement logging filters in UI
-			if (!txtConsole.IsDisposed)
+				if (txtConsole == null)
+					return;
+				if (txtConsole.IsDisposed)
+					return;
+				// TODO: implement logging filters in UI
 				txtConsole.AppendText(text + "\n");
+			});
 		}
 
 		#endregion
@@ -291,14 +298,15 @@ namespace Vidka.Components {
 
 		#region ================================ paint! ================================
 
-		private long repaintCount = 0;
 		private void VideoShitbox_Paint(object sender, PaintEventArgs e)
 		{
 			if (Logic == null)
 				return;
 
+			imageMan.___paintBegin();
+
 			// debug why do we repaint 2 times when scrolling???
-			//repaintCount++;
+			repaintCount++;
 			//cxzxc("y repaint 2x:" + repaintCount);
 
 			//prepare canvas: paint strips for timelines, etc
@@ -369,12 +377,28 @@ namespace Vidka.Components {
 					Height,
 					Logic.Dimdim);
 			}
+			imageMan.___paintEnd();
+		}
+
+		private void imageMan_ImagesReady()
+		{
+			Invalidate();
 		}
 
 		#endregion
 
 
 		#region ---------------- helpers -------------------
+
+		private void InvokeOrNot_IDontGiveAShit_JustDoIt(Action func) {
+			if (InvokeRequired) {
+				if (IsDisposed)
+					return;
+				Invoke(new MethodInvoker(func));
+				return;
+			}
+			func();
+		}
 
 		/// <summary>
 		/// Debug print to UI console

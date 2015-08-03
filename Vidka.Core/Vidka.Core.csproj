@@ -73,6 +73,9 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
+    <Compile Include="TaskQueueInOtherThread.cs" />
+    <Compile Include="UndoableAction.cs" />
+    <Compile Include="Utils.cs" />
     <Compile Include="VideoMeta\VideoMetadata.cs" />
     <Compile Include="VideoMeta\VideoMetadata.Extensions.cs" />
     <Compile Include="VidkaIO.cs" />

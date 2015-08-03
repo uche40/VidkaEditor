@@ -46,10 +46,12 @@ namespace Vidka.Components
 		private Font fontDefault = SystemFonts.DefaultFont;
 
 		// helpers
+		private ImageCacheManager imgCache;
 		private Rectangle destRect, srcRect;
 
-		public EditorDrawOps() {
+		public EditorDrawOps(ImageCacheManager imgCache) {
 			// init
+			this.imgCache = imgCache;
 			destRect = new Rectangle();
 			srcRect = new Rectangle();
 		}
@@ -218,20 +220,33 @@ namespace Vidka.Components
 		}
 
 		/// <param name="timeSec">needs to be in seconds to figure out which thumb</param>
-		private void DrawVideoThumbnail(Graphics g, Bitmap bmpAll, double timeSec, int xCenter, int yCenter, int preferredWidth, int maxWidth)
+		//private void DrawVideoThumbnail(Graphics g, Bitmap bmpAll, double timeSec, int xCenter, int yCenter, int preferredWidth, int maxWidth)
+		//{
+		//	var imageIndex = (int)(timeSec / ThumbnailTest.ThumbIntervalSec);
+		//	var nRow = bmpAll.Width / ThumbnailTest.ThumbW;
+		//	var nCol = bmpAll.Height / ThumbnailTest.ThumbH;
+		//	srcRect.X = ThumbnailTest.ThumbW * (imageIndex % nCol);
+		//	srcRect.Y = ThumbnailTest.ThumbH * (imageIndex / nRow);
+		//	srcRect.Width = ThumbnailTest.ThumbW;
+		//	srcRect.Height = ThumbnailTest.ThumbH;
+		//	destRect.Width = preferredWidth;
+		//	destRect.Height = preferredWidth * ThumbnailTest.ThumbH / ThumbnailTest.ThumbW;
+		//	destRect.X = xCenter - destRect.Width / 2;
+		//	destRect.Y = yCenter - destRect.Height / 2;
+		//	g.DrawImage(bmpAll, destRect: destRect, srcRect: srcRect, srcUnit: GraphicsUnit.Pixel);
+		//}
+		private void DrawVideoThumbnail(Graphics g, string filenameAll, int index, int xCenter, int yCenter, int preferredWidth, int maxWidth)
 		{
-			var imageIndex = (int)(timeSec / ThumbnailTest.ThumbIntervalSec);
-			var nRow = bmpAll.Width / ThumbnailTest.ThumbW;
-			var nCol = bmpAll.Height / ThumbnailTest.ThumbH;
-			srcRect.X = ThumbnailTest.ThumbW * (imageIndex % nCol);
-			srcRect.Y = ThumbnailTest.ThumbH * (imageIndex / nRow);
+			var bmpThumb = imgCache.getThumb(filenameAll, index);
+			srcRect.X = 0;
+			srcRect.Y = 0;
 			srcRect.Width = ThumbnailTest.ThumbW;
 			srcRect.Height = ThumbnailTest.ThumbH;
 			destRect.Width = preferredWidth;
 			destRect.Height = preferredWidth * ThumbnailTest.ThumbH / ThumbnailTest.ThumbW;
 			destRect.X = xCenter - destRect.Width / 2;
 			destRect.Y = yCenter - destRect.Height / 2;
-			g.DrawImage(bmpAll, destRect: destRect, srcRect: srcRect, srcUnit: GraphicsUnit.Pixel);
+			g.DrawImage(bmpThumb, destRect: destRect, srcRect: srcRect, srcUnit: GraphicsUnit.Pixel);
 		}
 
 		public void DrawBorder(Graphics g, int Width, int Height)
@@ -387,29 +402,39 @@ namespace Vidka.Components
 			double secStart, double len)
 		{
 			string thumbsFile = projMapping.AddGetThumbnailFilename(vclip.FileName);
-			if (File.Exists(thumbsFile))
+			//if (!File.Exists(thumbsFile))
+			//	return;
+			//Image origThumb = System.Drawing.Image.FromFile(thumbsFile, true);
+			//var bmpThumb = new Bitmap(origThumb);
+			var heightForThumbs = Math.Max(clipvh - 2 * THUMB_MARGIN_Y, ThumbnailTest.ThumbH);
+			var thumbPrefWidth = heightForThumbs * ThumbnailTest.ThumbW / ThumbnailTest.ThumbH;
+			var howManyThumbs = (clipw - THUMB_MARGIN) / (thumbPrefWidth + THUMB_MARGIN);
+			if (howManyThumbs == 0)
+				howManyThumbs = 1;
+			var xCenteringOffset = (clipw - howManyThumbs * (thumbPrefWidth + THUMB_MARGIN)) / 2;
+			for (int i = 0; i < howManyThumbs; i++)
 			{
-				Image origThumb = System.Drawing.Image.FromFile(thumbsFile, true);
-				var bmpThumb = new Bitmap(origThumb);
-				var heightForThumbs = Math.Max(clipvh - 2 * THUMB_MARGIN_Y, ThumbnailTest.ThumbH);
-				var thumbPrefWidth = heightForThumbs * ThumbnailTest.ThumbW / ThumbnailTest.ThumbH;
-				var howManyThumbs = (clipw - THUMB_MARGIN) / (thumbPrefWidth + THUMB_MARGIN);
-				if (howManyThumbs == 0)
-					howManyThumbs = 1;
-				var xCenteringOffset = (clipw - howManyThumbs * (thumbPrefWidth + THUMB_MARGIN)) / 2;
-				for (int i = 0; i < howManyThumbs; i++)
-				{
-					DrawVideoThumbnail(
-						g: g,
-						bmpAll: bmpThumb,
-						timeSec: secStart + (i + 0.5) * len / howManyThumbs,
-						xCenter: x1 + xCenteringOffset + i * (thumbPrefWidth + THUMB_MARGIN) + (thumbPrefWidth + THUMB_MARGIN) / 2,
-						yCenter: y1 + clipvh / 2,
-						preferredWidth: thumbPrefWidth,
-						maxWidth: clipw);
-				}
-				origThumb.Dispose();
+				//DrawVideoThumbnail(
+				//	g: g,
+				//	bmpAll: bmpThumb,
+				//	timeSec: secStart + (i + 0.5) * len / howManyThumbs,
+				//	xCenter: x1 + xCenteringOffset + i * (thumbPrefWidth + THUMB_MARGIN) + (thumbPrefWidth + THUMB_MARGIN) / 2,
+				//	yCenter: y1 + clipvh / 2,
+				//	preferredWidth: thumbPrefWidth,
+				//	maxWidth: clipw);
+				var timeSec = secStart + (i + 0.5) * len / howManyThumbs;
+				var imageIndex = (int)(timeSec / ThumbnailTest.ThumbIntervalSec);
+				DrawVideoThumbnail(
+					g: g,
+					filenameAll: thumbsFile,
+					index: imageIndex,
+					xCenter: x1 + xCenteringOffset + i * (thumbPrefWidth + THUMB_MARGIN) + (thumbPrefWidth + THUMB_MARGIN) / 2,
+					yCenter: y1 + clipvh / 2,
+					preferredWidth: thumbPrefWidth,
+					maxWidth: clipw);
 			}
+			//bmpThumb.Dispose();
+			//origThumb.Dispose();
 		}
 
 		/// <summary>

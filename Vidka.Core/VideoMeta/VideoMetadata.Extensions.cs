@@ -4,35 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Vidka.Core.VideoMeta {
-	public partial class ffprobeFormat {
-		public double ParsedDuration {
-			get {
-				double ddd = 0;
-				double.TryParse(this.duration, out ddd);
-				return ddd;
-			}
-		}
-	}
-
-	public partial class ffprobeStreamsStream {
-		public double ParsedDuration {
-			get {
-				double ddd = 0;
-				double.TryParse(this.duration, out ddd);
-				return ddd;
-			}
-		}
-
-		public int ParsedDurationFrames {
-			get
-			{
-				int ddd = 0;
-				int.TryParse(this.duration_ts, out ddd);
-				return ddd;
-			}
-		}
-	}
+namespace Vidka.Core.VideoMeta
+{
 
 	/// <summary>
 	/// a sensible wrapper class for stupid XML
@@ -40,38 +13,59 @@ namespace Vidka.Core.VideoMeta {
 	public class VideoMetadataUseful
 	{
 		private ffprobe xml;
-		private ffprobeStreamsStream videoStream;
-		private ffprobeStreamsStream audioStream;
+		private ffprobeStream videoStream;
+		private ffprobeStream audioStream;
 		private ffprobeFormat format;
 
 		public VideoMetadataUseful(ffprobe xml) {
 			this.xml = xml;
-			var streams = (ffprobeStreams)xml.Items[0];
-			if (streams != null) {
-				videoStream = streams.stream.FirstOrDefault(x => x.codec_type == "video");
-				audioStream = streams.stream.FirstOrDefault(x => x.codec_type == "audio");
+			if (xml.streams != null) {
+				videoStream = xml.streams.FirstOrDefault(x => x.codec_type == "video");
+				audioStream = xml.streams.FirstOrDefault(x => x.codec_type == "audio");
 			}
-			format = (ffprobeFormat)xml.Items[1];
+			format = (ffprobeFormat)xml.format;
 			
 		}
 
-		public double VideoDurationSec {
-			get {
-				return (videoStream == null) ? 0 : videoStream.ParsedDuration;
-			}
+		//public double VideoDurationSec {
+		//	get {
+		//		return (videoStream == null) ? 0 : (double)videoStream.duration;
+		//	}
+		//}
+
+		//public uint VideoDurationFrames
+		//{
+		//	get
+		//	{
+		//		return (videoStream == null) ? 0 : videoStream.duration_ts;
+		//	}
+		//}
+
+		public double GetVideoDurationSec(double projFps) {
+			if (videoStream == null)
+				return 0;
+			// hack to use 
+			if (projFps == 30
+				&& videoStream.r_frame_rate == "1000000/33333"
+				&& videoStream.avg_frame_rate == "1000000/33333")
+				return (double)videoStream.nb_read_frames / projFps;
+			return (double)videoStream.duration;
 		}
 
-		public int VideoDurationFrames
-		{
-			get
-			{
-				return (videoStream == null) ? 0 : videoStream.ParsedDurationFrames;
-			}
-		}
+		//public int GetVideoDurationFrames(double projFps) {
+		//	if (videoStream == null)
+		//		return 0;
+		//	// hack to use 
+		//	if (projFps == 30
+		//		&& videoStream.r_frame_rate == "1000000/33333"
+		//		&& videoStream.avg_frame_rate == "1000000/33333")
+		//		return (int)videoStream.nb_read_frames;
+		//	return (int)((double)videoStream.duration * projFps);
+		//}
 
 		public double AudioDurationSec {
 			get {
-				return (audioStream == null) ? 0 : audioStream.ParsedDuration;
+				return (audioStream == null) ? 0 : (double)audioStream.duration;
 			}
 		}
 
@@ -82,5 +76,26 @@ namespace Vidka.Core.VideoMeta {
 		}
 	}
 
+
+	public partial class ffprobeStream
+	{
+		/// <summary>
+		/// Not sure why we need this
+		/// </summary>
+		public double avg_frame_rate_Parsed {
+			get {
+				double fps = 0;
+				if (!avg_frame_rate.Contains("/"))
+					return double.TryParse(avg_frame_rate, out fps) ? fps : 0;
+				double top = 0, bot = 0;
+				var splits = avg_frame_rate.Split('/');
+				double.TryParse(splits.FirstOrDefault() ?? "", out top);
+				double.TryParse(splits.Skip(1).FirstOrDefault() ?? "", out top);
+				if (bot == 0)
+					return 0;
+				return top / bot;
+			}
+		}
+	}
 	
 }
