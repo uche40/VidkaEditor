@@ -17,5 +17,14 @@
     <Setting Name="FileExtensionsAudio" Type="System.String" Scope="Application">
       <Value Profile="(Default)">.wav|.mp3|.ogg</Value>
     </Setting>
+    <Setting Name="mencoderArguments" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">-ovc x264 -x264encopts preset=slow:tune=film:crf=22 -of lavf -o "{file-video}" -forcedsubsonly -oac mp3lame "{file-avs}" -vf scale,format=i420</Value>
+    </Setting>
+    <Setting Name="ExportVideoExtension" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">.mp4</Value>
+    </Setting>
+    <Setting Name="RightTrimMarkerOffsetSeconds" Type="System.Double" Scope="Application">
+      <Value Profile="(Default)">2</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

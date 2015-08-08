@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.ComponentModel;
 
 namespace Vidka.Core.Ops
 {
@@ -26,6 +27,8 @@ namespace Vidka.Core.Ops
 
 		protected const string FfmpegExecutable = "ffmpeg";
 		protected const string FfprobeExecutable = "ffprobe";
+		protected const string MencoderExecutable = "mencoder";
+		protected const string MplayerExecutable = "mplayer";
 
 		public OpBaseClass()
 		{
@@ -42,6 +45,25 @@ namespace Vidka.Core.Ops
 		protected void MakeSureTmpFolderExists() {
 			if (!Directory.Exists(TmpFolder))
 				Directory.CreateDirectory(TmpFolder);
+		}
+
+		protected void runProcessRememberError(Process process) {
+			try {
+				process.Start();
+				process.WaitForExit();// Waits here for the process to exit.
+			}
+			catch (Win32Exception ex) {
+				if (ex.NativeErrorCode == 2)
+					ResultCode = OpResultCode.FileNotFound;
+				else {
+					ResultCode = OpResultCode.OtherError;
+					ErrorMessage = ex.Message;
+				}
+			}
+			catch (Exception ex) {
+				ResultCode = OpResultCode.OtherError;
+				ErrorMessage = ex.Message;
+			}
 		}
 
 		public OpResultCode ResultCode { get; protected set; }

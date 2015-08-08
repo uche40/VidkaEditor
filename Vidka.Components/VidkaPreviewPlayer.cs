@@ -41,14 +41,9 @@ namespace Vidka.Components
 			CurMode = VidkaPreviewPlayerMode.None;
 		}
 
-		#region ============================== IVideoPlayer members =========================
+		private void VidkaPreviewPlayer_Load(object sender, EventArgs e) {}
 
-		public void PlayFileTest(String url)
-		{
-			//MediaPlayer.URL = url;
-			//MediaPlayer.Ctlcontrols.currentPosition = 18.0;
-			//MediaPlayer.Ctlcontrols.play();
-		}
+		#region ============================== IVideoPlayer members =========================
 
 		public void StopWhateverYouArePlaying() {
 			Ctlcontrols2.pause();
@@ -85,7 +80,9 @@ namespace Vidka.Components
 		public double GetPositionSec() {
 			return Ctlcontrols2.currentPosition;
 		}
-
+		public bool IsStopped() {
+			return MediaPlayer.playState == WMPPlayState.wmppsStopped;
+		}
 
 		#endregion
 
@@ -125,8 +122,5 @@ namespace Vidka.Components
 
 		#endregion
 
-		private void VidkaPreviewPlayer_Load(object sender, EventArgs e)
-		{
-		}
 	}
 }

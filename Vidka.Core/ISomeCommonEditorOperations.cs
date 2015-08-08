@@ -5,15 +5,13 @@ using System.Text;
 
 namespace Vidka.Core
 {
-	interface ISomeCommonEditorOperations
+	public interface ISomeCommonEditorOperations
 	{
+		void AddUndableAction_andFireRedo(UndoableAction action);
 		void ShowFrameInVideoPlayer(long frame);
-
-		/// <summary>
-		/// Not used now.
-		/// At first it was to notify user of KB mode, but then I decided to remove it,
-		/// But then I thought it might be useful for multi-drag operations
-		/// </summary>
-		void LockMouseMovements();
+		long SetFrameMarker_ShowFrameInPlayer(long frame);
+		void SetFrameMarker_ForceRepaint(long frame);
+		void AppendToConsole(VidkaConsoleLogLevel vidkaConsoleLogLevel, string p);
+		void cxzxc(string text);
 	}
 }

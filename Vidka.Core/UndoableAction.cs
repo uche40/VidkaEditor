@@ -9,5 +9,6 @@ namespace Vidka.Core
 	{
 		public Action Undo { get; set; }
 		public Action Redo { get; set; }
+		public Action PostAction { get; set; }
 	}
 }

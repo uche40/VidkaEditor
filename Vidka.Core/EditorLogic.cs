@@ -37,6 +37,10 @@ namespace Vidka.Core
 		/// Once zoomed out and clips are too small
 		/// </summary>
 		private const int BOUND_THRESH_MIN = 5;
+		/// <summary>
+		/// how many seconds to play preview
+		/// </summary>
+		private const double SecMplayerPreview = 5;
 
 		// what we are working with
 		private IVideoEditor editor;
@@ -63,9 +67,11 @@ namespace Vidka.Core
 
 		// my own state shit
 		private string curFilename;
+		private Stack<UndoableAction> undoStack = new Stack<UndoableAction>();
+		private Stack<UndoableAction> redoStack = new Stack<UndoableAction>();
 		private int mouseX;
-		private bool mouseMoveLocked = false; // I believe we are not using this at the moment...
-
+		private int? needToChangeCanvasWidth;
+		private int? needToChangeScrollX;
 
 		public EditorLogic(IVideoEditor editor, IVideoPlayer videoPlayer)
 		{
@@ -74,7 +80,7 @@ namespace Vidka.Core
 			Proj = new VidkaProj();
 			Dimdim = new ProjectDimensions(Proj);
 			UiObjects = new VidkaUiStateObjects();
-			previewLauncher = new PreviewThreadLauncher(videoPlayer, editor);
+			previewLauncher = new PreviewThreadLauncher(videoPlayer, this);
 			ioOps = new VidkaIO();
 
 			EditOpsAll = new EditOperationAbstract[] {
@@ -130,14 +136,14 @@ namespace Vidka.Core
 				int draggyVideoShoveIndex = Dimdim.GetVideoClipDraggyShoveIndex(UiObjects.Draggy);
 				Proj.ClipsVideo.InsertRange(draggyVideoShoveIndex, vclips);
 				Proj.Compile();
-				CanvasWidthNeedsToBeUpdated();
+				UpdateCanvasWidthFromProjAndDimdim();
 			}
 			else if (dragAndDropMan.Mode == DragAndDropManagerMode.DraggingAudio)
 			{
 				var aclips = dragAndDropMan.FinalizeDragAndMakeAudioClips();
 				cxzxc("TODO: DragAndDropManagerMode.DraggingAudio");
 				Proj.Compile();
-				CanvasWidthNeedsToBeUpdated();
+				UpdateCanvasWidthFromProjAndDimdim();
 			}
 			UiObjects.ClearDraggy();
 			___UiTransactionEnd();
@@ -145,15 +151,16 @@ namespace Vidka.Core
 
 		public void CancelDragDrop()
 		{
+			___UiTransactionBegin();
 			dragAndDropMan.CancelDragDrop();
 			UiObjects.ClearDraggy();
-			editor.PleaseRepaint();
+			___UiTransactionEnd();
 		}
 
 		private void dragAndDropMan_MetaReadyForDraggy(string filename, VideoMetadataUseful meta)
 		{
-			var newLengthFrames = dragAndDropMan.Draggies.FirstOrDefault().LengthInFrames;
 			___UiTransactionBegin();
+			var newLengthFrames = dragAndDropMan.Draggies.FirstOrDefault().LengthInFrames;
 			UiObjects.SetDraggyCoordinates(
 				text: "" + newLengthFrames + "\nframes",
 				frameLength: newLengthFrames
@@ -164,7 +171,7 @@ namespace Vidka.Core
 		private void dragAndDropMan_MetaReadyForOutstandingVideo(VidkaClipVideo vclip, VideoMetadataUseful meta)
 		{
 			___UiTransactionBegin();
-			CanvasWidthNeedsToBeUpdated();
+			UpdateCanvasWidthFromProjAndDimdim();
 			___UiTransactionEnd();
 		}
 
@@ -216,8 +223,8 @@ namespace Vidka.Core
 
 			// update UI...
 			___UiTransactionBegin();
-			UiObjects.SetCurrentMarkerFrame(0);
-			CanvasWidthNeedsToBeUpdated();
+			SetFrameMarker_0_ForceRepaint();
+			UpdateCanvasWidthFromProjAndDimdim();
 			___UiTransactionEnd();
 		}
 
@@ -225,9 +232,19 @@ namespace Vidka.Core
 		{
 			if (String.IsNullOrEmpty(curFilename))
 				throw new Exception("TODO: handle filenames, open/save XML and export");
-			var fileOut = curFilename + ".avs";
-			VidkaIO.ExportToAvs(Proj, fileOut);
-			editor.AppendToConsole(VidkaConsoleLogLevel.Info, "Exported to " + fileOut);
+			var fileOutAvs = curFilename + ".avs";
+			var fileOutVideo = curFilename + Settings.Default.ExportVideoExtension;
+			VidkaIO.ExportToAvs(Proj, fileOutAvs);
+			editor.iiii("------ export to " + Settings.Default.ExportVideoExtension + "------");
+			editor.iiii("Exported to " + fileOutAvs);
+			editor.iiii("Exporting to " + fileOutVideo);
+			editor.iiii("------ executing: ------");
+			var mencoding = new MEncoderMaveVideoFile(fileOutAvs, fileOutVideo);
+			editor.iiii(mencoding.FullCommand);
+			editor.iiii("------");
+			mencoding.RunMEncoder();
+			editor.iiii("Exported to " + fileOutVideo);
+			editor.iiii("Done export.");
 		}
 
 		// TODO: future
@@ -258,12 +275,77 @@ namespace Vidka.Core
 		public VidkaUiStateObjects UiObjects { get; private set; }
 		public VidkaFileMapping FileMapping { get; private set; }
 
+		public void SetPreviewPlayer(IVideoPlayer videoPlayer)
+		{
+			this.videoPlayer = videoPlayer;
+			previewLauncher.SetPreviewPlayer(videoPlayer);
+			ShowFrameInVideoPlayer(UiObjects.CurrentMarkerFrame);
+			// TODO: have a common interface maybe?
+			foreach (var op in EditOpsAll) {
+				op.SetVideoPlayer(videoPlayer);
+			}
+		}
+
 		public void UiInitialized()
 		{
 			___UiTransactionBegin();
-			CanvasWidthNeedsToBeUpdated();
+			UpdateCanvasWidthFromProjAndDimdim();
 			___UiTransactionEnd();
 			ShowFrameInVideoPlayer(UiObjects.CurrentMarkerFrame);
+		}
+
+		#endregion
+
+		#region ============================= state tracking for resizing, scrolling and repaint =============================
+
+		/// <summary>
+		/// Call this at the begging of every method that potentially changes the state of UI
+		/// </summary>
+		private void ___UiTransactionBegin() {
+			UiObjects.ClearStateChangeFlag();
+			needToChangeCanvasWidth = null;
+			needToChangeScrollX = null;
+		}
+
+		/// <summary>
+		/// Call this at the end of every method that potentially changes the state of UI
+		/// </summary>
+		private void ___UiTransactionEnd() {
+			if (needToChangeCanvasWidth.HasValue) {
+				editor.UpdateCanvasWidth(needToChangeCanvasWidth.Value);
+				___Ui_stateChanged();
+			}
+			if (needToChangeScrollX.HasValue) {
+				editor.UpdateCanvasHorizontalScroll(needToChangeScrollX.Value);
+				___Ui_stateChanged();
+			}
+			if (UiObjects.DidSomethingChange())
+				editor.PleaseRepaint();
+			if (UiObjects.DidSomethingChange_originalTimeline())
+				editor.AskToAbsoluteRepositionPreviewPlayer((UiObjects.CurrentClip != null)
+					? PreviewPlayerAbsoluteLocation.BottomRight
+					: PreviewPlayerAbsoluteLocation.TopRight);
+		}
+
+		/// <summary>
+		/// Call this b/w _begin and _end to force repaint
+		/// </summary>
+		private void ___Ui_stateChanged() {
+			UiObjects.UiStateChanged();
+		}
+
+		/// <summary>
+		/// Call this to update scrollX (forces repaint)
+		/// </summary>
+		private void ___Ui_updateScrollX(int scrollX) {
+			needToChangeScrollX = scrollX;
+		}
+
+		/// <summary>
+		/// Call this to update canvas width (forces repaint)
+		/// </summary>
+		private void ___Ui_updateCanvasWidth(int w) {
+			needToChangeCanvasWidth = w;
 		}
 
 		#endregion
@@ -274,8 +356,6 @@ namespace Vidka.Core
 		/// <param name="w">Width of the canvas</param>
 		public void MouseMoved(int x, int y, int w, int h)
 		{
-			if (mouseMoveLocked)
-				return;
 			___UiTransactionBegin();
 			mouseX = x;
 			var timeline = Dimdim.collision_whatTimeline(y, h);
@@ -316,8 +396,6 @@ namespace Vidka.Core
 
 		public void MouseLeave()
 		{
-			if (mouseMoveLocked)
-				return;
 			___UiTransactionBegin();
 			UiObjects.SetTimelineHover(ProjectDimensionsTimelineType.None);
 			UiObjects.SetHoverVideo(null);
@@ -325,21 +403,6 @@ namespace Vidka.Core
 		}
 
 		//------------------------ helpers -------------------------------
-
-		/// <summary>
-		/// Call this at the begging of every method that changes the state of UI
-		/// </summary>
-		private void ___UiTransactionBegin() {
-			UiObjects.ClearStateChangeFlag();
-		}
-
-		/// <summary>
-		/// Call this at the end of every method that changes the state of UI
-		/// </summary>
-		private void ___UiTransactionEnd() {
-			if (UiObjects.DidSomethingChange())
-				editor.PleaseRepaint();
-		}
 
 		/// <summary>
 		/// Check trim mouse collision and set TrimHover in UiObjects.
@@ -354,58 +417,64 @@ namespace Vidka.Core
 			}
 			var boundThres = BOUND_THRESH_MAX;
 			var blockWidth = Dimdim.lastCollision_x2 - Dimdim.lastCollision_x1;
-			if (blockWidth < 2 * BOUND_THRESH_MAX)
-				boundThres = BOUND_THRESH_MIN;
+			if (blockWidth < 4 * BOUND_THRESH_MAX)
+				boundThres = blockWidth / 4;
 			if (x - Dimdim.lastCollision_x1 <= boundThres)
 				UiObjects.SetTrimHover(TrimDirection.Left);
 			else if (Dimdim.lastCollision_x2 - x <= boundThres)
 				UiObjects.SetTrimHover(TrimDirection.Right);
 			else
 				UiObjects.SetTrimHover(TrimDirection.None);
+			UiObjects.SetTrimThreshPixels(boundThres);
 		}
 
 		#endregion
 
 		#region ============================= frame of view (scroll/zoom) =============================
 
-		public void setNewHorizontalScrollOffset(int x)
+		/// <summary>
+		/// Called by VideoShitbox when user scrolls with scrollbar or mousewheel
+		/// </summary>
+		public void setScrollX(int x)
 		{
 			Dimdim.setScroll(x);
 		}
 
 		public void ZoomIn(int width)
 		{
+			___UiTransactionBegin();
 			//Dimdim.ZoomIn(mouseX); // I decided not to zoom into the mouse... too unstable
 			Dimdim.ZoomIn(Dimdim.convert_Frame2ScreenX(UiObjects.CurrentMarkerFrame), width);
-			CanvasWidthAndScrollXNeedsToBeUpdated();
+			UpdateCanvasWidthFromProjAndDimdim();
+			UpdateCanvasScrollXFromDimdim();
+			___UiTransactionEnd();
 		}
 		/// <summary>
 		/// width parameter is needed here to prevent user from zooming out too much
 		/// </summary>
 		public void ZoomOut(int width)
 		{
+			___UiTransactionBegin();
 			Dimdim.ZoomOut(mouseX, width);
-			CanvasWidthAndScrollXNeedsToBeUpdated();
+			UpdateCanvasWidthFromProjAndDimdim();
+			UpdateCanvasScrollXFromDimdim();
+			___UiTransactionEnd();
 		}
 
 		/// <summary>
 		/// Call this in ALL spots where proj length is subject to change
 		/// </summary>
-		private void CanvasWidthNeedsToBeUpdated() {
+		private void UpdateCanvasWidthFromProjAndDimdim() {
 			var widthNeedsToBeSet = Dimdim.getTotalWidthPixelsForceRecalc();
-			editor.UpdateCanvasWidth(widthNeedsToBeSet);
-			UiObjects.UiStateChanged();
+			___Ui_updateCanvasWidth(widthNeedsToBeSet);
 		}
 
 		/// <summary>
 		/// Call this in ALL spots where scrollx is subject to change
 		/// </summary>
-		private void CanvasWidthAndScrollXNeedsToBeUpdated() {
-			var widthNeedsToBeSet = Dimdim.getTotalWidthPixelsForceRecalc();
-			editor.UpdateCanvasWidth(widthNeedsToBeSet);
+		private void UpdateCanvasScrollXFromDimdim() {
 			var scrollx = Dimdim.getCurrentScrollX();
-			editor.UpdateCanvasHorizontalScroll(scrollx);
-			editor.PleaseRepaint();
+			___Ui_updateScrollX(scrollx);
 		}
 
 		#region ============================= marker =============================
@@ -413,13 +482,62 @@ namespace Vidka.Core
 		// TODO: the code below does not use UiObjects.ClearStateChangeFlag()
 		// - Mon, June 15, 2015
 
-		public void FrameMarkerToBeginning(int w)
-		{
-			UiObjects.SetCurrentMarkerFrame(0);
-			checkMarkerOnScreenAndTakeAppropriateRepaintAction(w);
+		/// <summary>
+		/// Used during playback for animation of the marker (or cursor, if u like...)
+		/// </summary>
+		public void SetFrameMarker_ForceRepaint(long frame) {
+			___UiTransactionBegin();
+			UiObjects.SetCurrentMarkerFrame(frame);
+			updateFrameOfViewFromMarker();
+			___UiTransactionEnd();
 		}
 
-		private void checkMarkerOnScreenAndTakeAppropriateRepaintAction(int w)
+		/// <summary>
+		/// Used when HOME key is pressed
+		/// </summary>
+		public void SetFrameMarker_0_ForceRepaint()
+		{
+			___UiTransactionBegin();
+			SetFrameMarker_ShowFrameInPlayer(0);
+			___UiTransactionEnd();
+		}
+
+		/// <summary>
+		/// Used from within this class, when arrow keys are pressed,
+		/// by drag ops and other ops (e.g. or when a clip is deleted)
+		/// </summary>
+		public long SetFrameMarker_ShowFrameInPlayer(long frame)
+		{
+			printFrameToConsole(frame);
+			UiObjects.SetCurrentMarkerFrame(frame);
+			updateFrameOfViewFromMarker();
+			ShowFrameInVideoPlayer(UiObjects.CurrentMarkerFrame); // one more thing... unrelated... update the doggamn WMP
+			return frame;
+		}
+
+		/// <summary>
+		/// Used from within this class, when mouse is Pressed (clicked)
+		/// </summary>
+		private void SetFrameMarker_NoRepaint_ShowFrameInPlayer(long frame)
+		{
+			printFrameToConsole(frame);
+			UiObjects.SetCurrentMarkerFrame(frame);
+			ShowFrameInVideoPlayer(UiObjects.CurrentMarkerFrame); // one more thing... unrelated... update the doggamn WMP
+		}
+
+		private void printFrameToConsole(long frame) {
+			var sec = Proj.FrameToSec(frame);
+			var secFloor = (long)sec;
+			var secFloorFrame = Proj.SecToFrame(secFloor);
+			var frameRemainder = frame - secFloorFrame;
+			var timeSpan = TimeSpan.FromSeconds(secFloor);
+			cxzxc(String.Format("frame={0} ({1}.{2})"
+				, frame
+				, timeSpan.ToString((timeSpan.TotalHours >= 1) ? @"hh\:mm\:ss" : @"mm\:ss")
+				, frameRemainder));
+		}
+
+		private void updateFrameOfViewFromMarker()
 		{
 			//var frame = UiObjects.CurrentMarkerFrame;
 			var screenX = Dimdim.convert_Frame2ScreenX(UiObjects.CurrentMarkerFrame);
@@ -427,33 +545,64 @@ namespace Vidka.Core
 			if (screenX < 0)
 			{
 				// screen jumps back
-				int scrollX = absX - w + SCREEN_MARKER_JUMP_LEEWAY;
+				int scrollX = absX - editor.Width + SCREEN_MARKER_JUMP_LEEWAY;
 				if (scrollX < 0)
 					scrollX = 0;
 				Dimdim.setScroll(scrollX);
-				editor.UpdateCanvasHorizontalScroll(scrollX);
+				___Ui_updateScrollX(scrollX);
 			}
-			else if (screenX >= w)
+			else if (screenX >= editor.Width)
 			{
 				// screen jumps forward
 				int scrollX = absX - SCREEN_MARKER_JUMP_LEEWAY;
+				var maxScrollValue = Dimdim.getTotalWidthPixels() - editor.Width;
+				if (scrollX > maxScrollValue)
+					scrollX = maxScrollValue;
 				Dimdim.setScroll(scrollX);
-				editor.UpdateCanvasHorizontalScroll(scrollX);
+				___Ui_updateScrollX(scrollX);
 			}
-			else
-				editor.PleaseRepaint();
-
-			// one more thing... unrelated... update the doggamn WMP
-			ShowFrameInVideoPlayer(UiObjects.CurrentMarkerFrame);
 		}
 
 		/// <summary>
 		/// This is a marker-related function, so we keep it in the marker region
 		/// </summary>
-		private void updateCurFrameMarkerPosition(int frameDelta, int w)
+		private long setCurFrameMarkerPosition_fromArrowKeys(Keys keyData)
 		{
-			UiObjects.IncCurrentMarkerFrame(frameDelta);
-			checkMarkerOnScreenAndTakeAppropriateRepaintAction(w);
+			if (keyData == (Keys.Control | Keys.Left) || keyData == (Keys.Control | Keys.Right))
+			{
+				long frameOffset = 0;
+				var curClipIndex = Proj.GetVideoClipIndexAtFrame_forceOnLastClip(UiObjects.CurrentMarkerFrame, out frameOffset);
+				if (curClipIndex == -1)
+					return SetFrameMarker_ShowFrameInPlayer(0);
+				var clip = Proj.ClipsVideo[curClipIndex];
+				var framesToStartOfClip = frameOffset - clip.FrameStart;
+				if (keyData == (Keys.Control | Keys.Left))
+				{
+					if (framesToStartOfClip > 0) // special case: go to beginning of this clip
+						return SetFrameMarker_ShowFrameInPlayer(UiObjects.CurrentMarkerFrame - framesToStartOfClip);
+					frameOffset = 0;
+					if (curClipIndex > 0)
+						clip = Proj.ClipsVideo[curClipIndex-1];
+				}
+				else if (keyData == (Keys.Control | Keys.Right))
+				{
+					frameOffset = 0;
+					if (curClipIndex < Proj.ClipsVideo.Count - 1)
+						clip = Proj.ClipsVideo[curClipIndex + 1];
+					else
+						frameOffset = clip.LengthFrameCalc;
+				}
+				var frameAbs = Proj.GetVideoClipAbsFramePositionLeft(clip);
+				UiObjects.SetActiveVideo(clip, Proj);
+				UiObjects.SetHoverVideo(null);
+				SetFrameMarker_ShowFrameInPlayer(frameAbs + frameOffset);
+				return 0;
+			}
+			// the usual ... left, right, alt+left, alt+right
+			var frameDelta = ArrowKey2FrameDelta(keyData);
+			if (frameDelta != 0)
+				SetFrameMarker_ShowFrameInPlayer(UiObjects.CurrentMarkerFrame + frameDelta);
+			return 0;
 		}
 
 		#endregion
@@ -470,10 +619,22 @@ namespace Vidka.Core
 				previewLauncher.StopPlayback();
 		}
 
+		public void PreviewAvsSegmentInMplayer(bool leaveOpen)
+		{
+			var mplayed = new MPlayerPlaybackSegment(Proj, UiObjects.CurrentMarkerFrame, (long)(Proj.FrameRate * SecMplayerPreview), leaveOpen);
+			if (mplayed.ResultCode == OpResultCode.FileNotFound)
+				editor.AppendToConsole(VidkaConsoleLogLevel.Error, "Error: please make sure mplayer is in your PATH!");
+			else if (mplayed.ResultCode == OpResultCode.OtherError)
+				editor.AppendToConsole(VidkaConsoleLogLevel.Error, "Error: " + mplayed.ErrorMessage);
+		}
+
 		/// <summary>
 		/// Navigate to that frame in the damn AVI file and pause the damn WMP
 		/// </summary>
-		public void ShowFrameInVideoPlayer(long frame) {
+		public void ShowFrameInVideoPlayer(long frame)
+		{
+			if (previewLauncher.IsPlaying)
+				previewLauncher.StopPlayback();
 			long frameOffset;
 			var clipIndex = Proj.GetVideoClipIndexAtFrame(frame, out frameOffset);
 			var secOffset = Proj.FrameToSec(frameOffset);
@@ -491,65 +652,60 @@ namespace Vidka.Core
 
 		#region ============================= editing =============================
 
+		#region ---------------------- UNDO/REDO -----------------------------
+		
 		public void Redo()
 		{
 			if (!redoStack.Any())
 				return;
 			var action = redoStack.Pop();
-			action.Redo();
 			undoStack.Push(action);
+
+			___UiTransactionBegin();
+			action.Redo();
+			if (action.PostAction != null)
+				action.PostAction();
+			___Ui_stateChanged();
+			___UiTransactionEnd();
 		}
 		public void Undo()
 		{
 			if (!undoStack.Any())
 				return;
 			var action = undoStack.Pop();
-			action.Undo();
 			redoStack.Push(action);
+
+			___UiTransactionBegin();
+			action.Undo();
+			if (action.PostAction != null)
+				action.PostAction();
+			___Ui_stateChanged();
+			___UiTransactionEnd();
 		}
-		public void AddUndableAction(UndoableAction action)
+		public void AddUndableAction_andFireRedo(UndoableAction action)
 		{
 			undoStack.Push(action);
+			if (redoStack.Any())
+				cxzxc("----------");
 			redoStack.Clear();
+
+			___UiTransactionBegin();
 			action.Redo();
+			if (action.PostAction != null)
+				action.PostAction();
+			___Ui_stateChanged();
+			___UiTransactionEnd();
 		}
-		private Stack<UndoableAction> undoStack = new Stack<UndoableAction>();
-		private Stack<UndoableAction> redoStack = new Stack<UndoableAction>();
 
+		#endregion
+		
 		#region ---------------------- mouse dragging operations -----------------------------
-
-		public void LeftRightArrowKeys(Keys keyData, int w)
-		{
-			if (CurEditOp != null)
-			{
-				___UiTransactionBegin();
-				CurEditOp.KeyPressedArrow(keyData);
-			}
-			int frameDelta = ArrowKey2FrameDelta(keyData);
-			if (frameDelta != 0)
-			{
-				if (CurEditOp != null)
-					CurEditOp.ApplyFrameDelta(frameDelta);
-				else
-					updateCurFrameMarkerPosition(frameDelta, w);
-			}
-			if (CurEditOp != null)
-				___UiTransactionEnd();
-		}
 
 		public void MouseDragStart(int x, int y, int w, int h)
 		{
-			// if was mouse move was locked and not working...
-			if (mouseMoveLocked)
-			{
-				// ... quickly wake him up and make him do his thing... lol
-				mouseMoveLocked = false;
-				MouseMoved(x, y, w, h);
-			}
-
 			mouseX = x; // prob not needed, since it is always set in mouseMove, but whatever
+			
 			___UiTransactionBegin();
-
 			if (CurEditOp == null || CurEditOp.DoesNewMouseDragCancelMe)
 			{
 				// unless we have an active op that requests this drag action,
@@ -572,27 +728,27 @@ namespace Vidka.Core
 						break;
 				}
 
-				var cursorFrame = (timeline == ProjectDimensionsTimelineType.Original && UiObjects.CurrentClip != null)
-					? (UiObjects.CurrentClipFrameAbsPos ?? 0) - UiObjects.CurrentClip.FrameStart + UiObjects.CurrentClip.FileLengthFrames * x / w
-					: Dimdim.convert_ScreenX2Frame(x);
-				// NOTE: if you want for negative frames to show original clip's thumb in player, remove this first  
-				if (cursorFrame < 0)
-					cursorFrame = 0;
-				UiObjects.SetCurrentMarkerFrame(cursorFrame);
-				
 				// if previous op is still active and it allows us to 
 				CurEditOp = WhatMouseDragOperationDoWeGoInto();
 				if (CurEditOp != null)
 				{
 					CurEditOp.Init();
-					editor.AppendToConsole(VidkaConsoleLogLevel.Info, "Edit mode: " + CurEditOp.Description);
+					//editor.AppendToConsole(VidkaConsoleLogLevel.Info, "Edit mode: " + CurEditOp.Description);
+				}
+				else
+				{
+					var cursorFrame = (timeline == ProjectDimensionsTimelineType.Original && UiObjects.CurrentClip != null)
+					? (UiObjects.CurrentClipFrameAbsPos ?? 0) - UiObjects.CurrentClip.FrameStart + UiObjects.CurrentClip.FileLengthFrames * x / w
+					: Dimdim.convert_ScreenX2Frame(x);
+					// NOTE: if you want for negative frames to show original clip's thumb in player, remove this first  
+					if (cursorFrame < 0)
+						cursorFrame = 0;
+					SetFrameMarker_NoRepaint_ShowFrameInPlayer(cursorFrame);
 				}
 			}
 			if (CurEditOp != null)
 				CurEditOp.MouseDragStart(x, y, w, h);
 			___UiTransactionEnd();
-
-			ShowFrameInVideoPlayer(UiObjects.CurrentMarkerFrame);
 		}
 
 		/// <param name="deltaX">relative to where the mouse was pressed down</param>
@@ -640,12 +796,39 @@ namespace Vidka.Core
 			___UiTransactionEnd();
 		}
 
-		/// <summary>
-		/// This will be called by ops to enter keyboard mode. Locks mouse move only
-		/// </summary>
-		public void LockMouseMovements() {
-			mouseMoveLocked = true;
-			editor.PleaseRepaint();
+		public void LeftRightArrowKeys(Keys keyData)
+		{
+			___UiTransactionBegin();
+			if (CurEditOp != null)
+			{
+				CurEditOp.KeyPressedArrow(keyData);
+				var frameDelta = ArrowKey2FrameDelta(keyData);
+				if (frameDelta != 0)
+					CurEditOp.ApplyFrameDelta(frameDelta);
+			}
+			else
+			{
+				setCurFrameMarkerPosition_fromArrowKeys(keyData);
+			}
+			___UiTransactionEnd();
+		}
+
+		public void ControlPressed()
+		{
+			if (CurEditOp == null)
+				return;
+			___UiTransactionBegin();
+			CurEditOp.ControlPressed();
+			___UiTransactionEnd();
+		}
+
+		public void ShiftPressed()
+		{
+			if (CurEditOp == null)
+				return;
+			___UiTransactionBegin();
+			CurEditOp.ShiftPressed();
+			___UiTransactionEnd();
 		}
 
 		#endregion
@@ -662,19 +845,19 @@ namespace Vidka.Core
 			var clip_oldStart = clip.FrameStart;
 			var clipNewOnTheLeft = clip.MakeCopy();
 			clipNewOnTheLeft.FrameEnd = frameOffsetStartOfVideo; // remember, frameOffset is returned relative to start of the media file
-			AddUndableAction(new UndoableAction
+			AddUndableAction_andFireRedo(new UndoableAction
 			{
 				Undo = () =>
 				{
+					cxzxc("UNDO split");
 					Proj.ClipsVideo.Remove(clipNewOnTheLeft);
 					clip.FrameStart = clip_oldStart;
-					editor.PleaseRepaint();
 				},
 				Redo = () =>
 				{
+					cxzxc("split: location=" + frameOffsetStartOfVideo);
 					Proj.ClipsVideo.Insert(clipIndex, clipNewOnTheLeft);
 					clip.FrameStart = frameOffsetStartOfVideo;
-					editor.PleaseRepaint();
 				}
 			});
 		}
@@ -687,17 +870,19 @@ namespace Vidka.Core
 			if (!DoVideoSplitCalculations(out clip, out clipIndex, out frameOffsetStartOfVideo))
 				return;
 			var clip_oldStart = clip.FrameStart;
-			AddUndableAction(new UndoableAction
+			AddUndableAction_andFireRedo(new UndoableAction
 			{
 				Undo = () =>
 				{
+					cxzxc("UNDO splitL: start=" + clip_oldStart);
 					clip.FrameStart = clip_oldStart;
-					CanvasWidthNeedsToBeUpdated();
+					UpdateCanvasWidthFromProjAndDimdim();
 				},
 				Redo = () =>
 				{
+					cxzxc("splitL: start=" + frameOffsetStartOfVideo);
 					clip.FrameStart = frameOffsetStartOfVideo;
-					CanvasWidthNeedsToBeUpdated();
+					UpdateCanvasWidthFromProjAndDimdim();
 				}
 			});
 		}
@@ -710,17 +895,19 @@ namespace Vidka.Core
 			if (!DoVideoSplitCalculations(out clip, out clipIndex, out frameOffsetStartOfVideo))
 				return;
 			var clip_oldEnd = clip.FrameEnd;
-			AddUndableAction(new UndoableAction
+			AddUndableAction_andFireRedo(new UndoableAction
 			{
 				Undo = () =>
 				{
+					cxzxc("UNDO splitR: end=" + clip_oldEnd);
 					clip.FrameEnd = clip_oldEnd;
-					CanvasWidthNeedsToBeUpdated();
+					UpdateCanvasWidthFromProjAndDimdim();
 				},
 				Redo = () =>
 				{
+					cxzxc("splitR: end=" + frameOffsetStartOfVideo);
 					clip.FrameEnd = frameOffsetStartOfVideo;
-					CanvasWidthNeedsToBeUpdated();
+					UpdateCanvasWidthFromProjAndDimdim();
 				}
 			});
 		}
@@ -756,22 +943,48 @@ namespace Vidka.Core
 
 		public void DeleteCurSelectedClip()
 		{
-			___UiTransactionBegin();
 			if (UiObjects.CurrentVideoClip != null)
 			{
-				Proj.ClipsVideo.Remove(UiObjects.CurrentVideoClip);
-				UiObjects.SetActiveVideo(null, Proj);
-				UiObjects.SetHoverVideo(null);
-				CanvasWidthNeedsToBeUpdated();
+				var toRemove = UiObjects.CurrentVideoClip;
+				var clipIndex = Proj.ClipsVideo.IndexOf(toRemove);
+				AddUndableAction_andFireRedo(new UndoableAction {
+					Redo = () => {
+						cxzxc("delete vclip " + clipIndex);
+						Proj.ClipsVideo.Remove(toRemove);
+					},
+					Undo = () => {
+						cxzxc("UNDO delete vclip " + clipIndex);
+						Proj.ClipsVideo.Insert(clipIndex, toRemove);
+					},
+					PostAction = () => {
+						UiObjects.SetHoverVideo(null);
+						if (Proj.ClipsVideo.Count == 0) {
+							UiObjects.SetActiveVideo(null, Proj);
+							SetFrameMarker_0_ForceRepaint();
+						}
+						else {
+							var highlightIndex = clipIndex;
+							if (highlightIndex >= Proj.ClipsVideo.Count)
+								highlightIndex = Proj.ClipsVideo.Count - 1;
+							var clipToSelect = Proj.ClipsVideo[highlightIndex];
+							var firstFrameOfSelected = Proj.GetVideoClipAbsFramePositionLeft(clipToSelect);
+							UiObjects.SetActiveVideo(clipToSelect, Proj);
+							//UiObjects.SetCurrentMarkerFrame(firstFrameOfSelected);
+							// TODO: don't repaint twice, rather keep track of whether to repaint or not
+							SetFrameMarker_ShowFrameInPlayer(firstFrameOfSelected);
+						}
+						UpdateCanvasWidthFromProjAndDimdim();
+					}
+				});
 			}
 			else if (UiObjects.CurrentAudioClip != null)
 			{
+				// TODO: undo redo...
 				Proj.ClipsAudio.Remove(UiObjects.CurrentAudioClip);
 				UiObjects.SetActiveAudio(null);
 				UiObjects.SetHoverAudio(null);
-				CanvasWidthNeedsToBeUpdated();
+				UpdateCanvasWidthFromProjAndDimdim();
 			}
-			___UiTransactionEnd();
 		}
 
 		#endregion
@@ -794,14 +1007,13 @@ namespace Vidka.Core
 		{
 			CurEditOp.EndOperation();
 			CurEditOp = null;
-			mouseMoveLocked = false;
-			editor.AppendToConsole(VidkaConsoleLogLevel.Info, "Edit mode: none");
+			//editor.AppendToConsole(VidkaConsoleLogLevel.Info, "Edit mode: none");
 		}
 
 		/// <summary>
 		/// returns 1, -1, MANY_FRAMES_STEP, -MANY_FRAMES_STEP
 		/// </summary>
-		private int ArrowKey2FrameDelta(Keys keyData)
+		private long ArrowKey2FrameDelta(Keys keyData)
 		{
 			if (keyData == Keys.Left)
 				return -1;
@@ -848,12 +1060,17 @@ namespace Vidka.Core
 		/// <summary>
 		/// Debug print to UI console
 		/// </summary>
-		private void cxzxc(string text) {
-			editor.AppendToConsole(VidkaConsoleLogLevel.Debug, text);
+		public void cxzxc(string text) {
+			AppendToConsole(VidkaConsoleLogLevel.Debug, text);
+		}
+
+		public void AppendToConsole(VidkaConsoleLogLevel level, string s) {
+			editor.AppendToConsole(level, s);
 		}
 
 		#endregion
 
 		#endregion
+		
 	}
 }

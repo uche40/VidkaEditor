@@ -15,7 +15,8 @@ namespace Vidka.Core
 	public class VidkaUiStateObjects
 	{
 		private bool stateChanged;
-
+		private bool originalTimelineSelectionChanged; // used to change player position when console is hidden and player floats around
+		
 		// settable properties
 		public ProjectDimensionsTimelineType TimelineHover { get; private set; }
 		public VidkaClipVideo CurrentVideoClip { get; private set; }
@@ -24,6 +25,7 @@ namespace Vidka.Core
 		public VidkaClipAudio CurrentAudioClipHover { get; private set; }
 		public long? CurrentClipFrameAbsPos { get; private set; }
 		public TrimDirection TrimHover { get; private set; }
+		public int TrimThreshPixels { get; set; }
 		public long CurrentMarkerFrame { get; private set; }
 		public long MouseDragFrameDelta { get; private set; }
 		public EditorDraggy Draggy { get; private set; }
@@ -54,9 +56,10 @@ namespace Vidka.Core
 		/// </summary>
 		public void ClearStateChangeFlag() {
 			stateChanged = false;
+			originalTimelineSelectionChanged = false;
 		}
 		/// <summary>
-		/// Call if a repaint is needed anyway, regardless
+		/// Call if a repaint should be forced anyway, regardless
 		/// </summary>
 		public void UiStateChanged() {
 			stateChanged = true;
@@ -70,10 +73,10 @@ namespace Vidka.Core
 		}
 
 		/// <summary>
-		/// Forces state change to true. Used by EditOp classes, who don't see the whole picture
+		/// Used to change player position when console is hidden and player floats around
 		/// </summary>
-		internal void SomethingDidChangeITellYou() {
-			stateChanged = true;
+		public bool DidSomethingChange_originalTimeline() {
+			return originalTimelineSelectionChanged;
 		}
 
 		#endregion
@@ -119,7 +122,10 @@ namespace Vidka.Core
 		{
 			if (CurrentVideoClip != active ||
 				CurrentAudioClip != null)
+			{
 				stateChanged = true;
+				originalTimelineSelectionChanged = true;
+			}
 			CurrentVideoClip = active;
 			CurrentAudioClip = null;
 			CurrentClipFrameAbsPos = (active != null)
@@ -134,33 +140,40 @@ namespace Vidka.Core
 		{
 			if (CurrentAudioClip != active ||
 				CurrentVideoClip != null)
+			{
 				stateChanged = true;
+				originalTimelineSelectionChanged = true;
+			}
 			CurrentAudioClip = active;
 			CurrentVideoClip = null;
 			CurrentClipFrameAbsPos = (active != null) ? (long?)active.FrameStart : null;
 		}
 
 		public void SetCurrentMarkerFrame(long frame) {
+			if (frame < 0)
+				frame = 0;
 			if (CurrentMarkerFrame != frame)
 				stateChanged = true;
 			CurrentMarkerFrame = frame;
 		}
 
-		internal void IncCurrentMarkerFrame(int frameInc)
+		public void IncCurrentMarkerFrame(long frameInc)
 		{
-			var oldMarker = CurrentMarkerFrame;
-			CurrentMarkerFrame += frameInc;
-			if (CurrentMarkerFrame < 0)
-				CurrentMarkerFrame = 0;
-			if (CurrentMarkerFrame != oldMarker)
-				stateChanged = true;
+			SetCurrentMarkerFrame(CurrentMarkerFrame + frameInc);
 		}
 
-		internal void SetTrimHover(TrimDirection trimHover)
+		public void SetTrimHover(TrimDirection trimHover)
 		{
 			if (trimHover != TrimHover)
 				stateChanged = true;
 			TrimHover = trimHover;
+		}
+
+		internal void SetTrimThreshPixels(int trimThreshPixels)
+		{
+			if (trimThreshPixels != TrimThreshPixels)
+				stateChanged = true;
+			TrimThreshPixels = trimThreshPixels;
 		}
 
 		internal void setMouseDragFrameDelta(long frameDelta)
@@ -232,6 +245,7 @@ namespace Vidka.Core
 				text: "Analyzing...",
 				frameLength: framesSampleQuarterScreen);
 		}
+
 	}
 
 	public enum TrimDirection {

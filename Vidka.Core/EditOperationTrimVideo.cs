@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Vidka.Core.Error;
 using Vidka.Core.Model;
+using Vidka.Core.Properties;
 
 namespace Vidka.Core
 {
@@ -66,18 +67,35 @@ namespace Vidka.Core
 			var deltaConstrained = clip.HowMuchCanBeTrimmed(side, uiObjects.MouseDragFrameDelta);
 			if (deltaConstrained != 0)
 			{
-				if (side == TrimDirection.Left)
-					clip.FrameStart += deltaConstrained;
-				else if (side == TrimDirection.Right)
-					clip.FrameEnd += deltaConstrained;
-				uiObjects.SomethingDidChangeITellYou();
+				iEditor.AddUndableAction_andFireRedo(new UndoableAction() {
+					Redo = () => {
+						cxzxc("Trim " + side + ": " + deltaConstrained);
+						if (side == TrimDirection.Left)
+							clip.FrameStart += deltaConstrained;
+						else if (side == TrimDirection.Right)
+							clip.FrameEnd += deltaConstrained;
+					},
+					Undo = () => {
+						cxzxc("UNDO Trim " + side + ": " + deltaConstrained);
+						if (side == TrimDirection.Left)
+							clip.FrameStart -= deltaConstrained;
+						else if (side == TrimDirection.Right)
+							clip.FrameEnd -= deltaConstrained;
+					},
+					PostAction = () => {
+						long frameMarker = proj.GetVideoClipAbsFramePositionLeft(clip);
+						var rightThreshFrames = proj.SecToFrame(Settings.Default.RightTrimMarkerOffsetSeconds);
+						if (side == TrimDirection.Right && clip.LengthFrameCalc > rightThreshFrames)
+							frameMarker += clip.LengthFrameCalc - rightThreshFrames;
+						iEditor.SetFrameMarker_ShowFrameInPlayer(frameMarker);
+					}
+				});
 			}
 			if (uiObjects.MouseDragFrameDelta != 0)
 			{
 				// switch to KB mode
 				keyboardMode = true;
 				editor.AppendToConsole(VidkaConsoleLogLevel.Info, "Use arrow keys to adjust...");
-				//iEditor.LockMouseMovements(); // this UE is not good
 			}
 			else
 			{
@@ -87,7 +105,7 @@ namespace Vidka.Core
 			uiObjects.setMouseDragFrameDelta(0);
 		}
 
-		public override void ApplyFrameDelta(int deltaFrame)
+		public override void ApplyFrameDelta(long deltaFrame)
 		{
 			if (!keyboardMode)
 				return;
@@ -96,20 +114,34 @@ namespace Vidka.Core
 			var deltaConstrained = clip.HowMuchCanBeTrimmed(side, deltaFrame);
 			if (deltaConstrained != 0)
 			{
-				if (side == TrimDirection.Left)
-					clip.FrameStart += deltaConstrained;
-				else if (side == TrimDirection.Right)
-					clip.FrameEnd += deltaConstrained;
-				// show in video player
-				var frameEdge = (side == TrimDirection.Right) ? clip.FrameEnd-1 : clip.FrameStart;
-				var second = proj.FrameToSec(frameEdge);
-				videoPlayer.SetStillFrame(clip.FileName, second);
-				//cxzxc("preview2:" + second);
+				iEditor.AddUndableAction_andFireRedo(new UndoableAction() {
+					Redo = () => {
+						cxzxc("Trim " + side + ": " + deltaConstrained);
+						if (side == TrimDirection.Left)
+							clip.FrameStart += deltaConstrained;
+						else if (side == TrimDirection.Right)
+							clip.FrameEnd += deltaConstrained;
+					},
+					Undo = () => {
+						cxzxc("UNDO Trim " + side + ": " + deltaConstrained);
+						if (side == TrimDirection.Left)
+							clip.FrameStart -= deltaConstrained;
+						else if (side == TrimDirection.Right)
+							clip.FrameEnd -= deltaConstrained;
+					},
+					PostAction = () => {
+						// show in video player
+						var frameEdge = (side == TrimDirection.Right) ? clip.FrameEnd - 1 : clip.FrameStart;
+						var second = proj.FrameToSec(frameEdge);
+						videoPlayer.SetStillFrame(clip.FileName, second);
+						//cxzxc("preview2:" + second);
+					}
+				});
 			}
 			// set ui objects (repaint regardless to give feedback to user that this operation is still in action)
 			uiObjects.SetHoverVideo(clip);
 			uiObjects.SetTrimHover(side);
-			uiObjects.SomethingDidChangeITellYou();
+			uiObjects.UiStateChanged();
 		}
 
 		public override void EnterPressed()

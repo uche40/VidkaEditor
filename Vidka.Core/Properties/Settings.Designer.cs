@@ -67,5 +67,33 @@ namespace Vidka.Core.Properties {
                 return ((string)(this["FileExtensionsAudio"]));
             }
         }
+        
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("-ovc x264 -x264encopts preset=slow:tune=film:crf=22 -of lavf -o \"{file-video}\" -f" +
+            "orcedsubsonly -oac mp3lame \"{file-avs}\" -vf scale,format=i420")]
+        public string mencoderArguments {
+            get {
+                return ((string)(this["mencoderArguments"]));
+            }
+        }
+        
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute(".mp4")]
+        public string ExportVideoExtension {
+            get {
+                return ((string)(this["ExportVideoExtension"]));
+            }
+        }
+        
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("2")]
+        public double RightTrimMarkerOffsetSeconds {
+            get {
+                return ((double)(this["RightTrimMarkerOffsetSeconds"]));
+            }
+        }
     }
 }

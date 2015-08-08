@@ -39,22 +39,7 @@ namespace Vidka.Core.Ops {
 			process.StartInfo.Arguments = String.Format("-i \"{0}\" -y -ac 1 -filter:a aresample={1} -map 0:a -c:a pcm_s8 -f data {2}", filename, SampleRate, outFilename);
 			process.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
 			process.StartInfo.CreateNoWindow = true;
-			try
-			{
-				process.Start();
-				process.WaitForExit();// Waits here for the process to exit.
-			}
-			catch (Win32Exception ex) {
-				if (ex.NativeErrorCode == 2)
-					ResultCode = OpResultCode.FileNotFound;
-				else {
-					ResultCode = OpResultCode.OtherError;
-					ErrorMessage = ex.Message;
-				}
-			} catch (Exception ex) {
-				ResultCode = OpResultCode.OtherError;
-				ErrorMessage = ex.Message;
-			}
+			runProcessRememberError(process);			
 		}
 
 		// it is assumed length is much < than rawsamples2Byte.Length (see countThresh)

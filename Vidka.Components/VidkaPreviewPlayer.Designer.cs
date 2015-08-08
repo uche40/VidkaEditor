@@ -29,21 +29,9 @@
 		private void InitializeComponent()
 		{
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(VidkaPreviewPlayer));
-			this.labelBottom = new System.Windows.Forms.Label();
 			this.MediaPlayer = new AxWMPLib.AxWindowsMediaPlayer();
 			((System.ComponentModel.ISupportInitialize)(this.MediaPlayer)).BeginInit();
 			this.SuspendLayout();
-			// 
-			// labelBottom
-			// 
-			this.labelBottom.AutoSize = true;
-			this.labelBottom.Dock = System.Windows.Forms.DockStyle.Bottom;
-			this.labelBottom.Location = new System.Drawing.Point(0, 497);
-			this.labelBottom.Name = "labelBottom";
-			this.labelBottom.Size = new System.Drawing.Size(208, 32);
-			this.labelBottom.TabIndex = 0;
-			this.labelBottom.Text = "Preview screen";
-			this.labelBottom.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
 			// 
 			// MediaPlayer
 			// 
@@ -52,7 +40,7 @@
 			this.MediaPlayer.Location = new System.Drawing.Point(0, 0);
 			this.MediaPlayer.Name = "MediaPlayer";
 			this.MediaPlayer.OcxState = ((System.Windows.Forms.AxHost.State)(resources.GetObject("MediaPlayer.OcxState")));
-			this.MediaPlayer.Size = new System.Drawing.Size(1220, 497);
+			this.MediaPlayer.Size = new System.Drawing.Size(1220, 529);
 			this.MediaPlayer.TabIndex = 1;
 			// 
 			// VidkaPreviewPlayer
@@ -60,18 +48,15 @@
 			this.AutoScaleDimensions = new System.Drawing.SizeF(16F, 31F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.Controls.Add(this.MediaPlayer);
-			this.Controls.Add(this.labelBottom);
 			this.Name = "VidkaPreviewPlayer";
 			this.Size = new System.Drawing.Size(1220, 529);
 			((System.ComponentModel.ISupportInitialize)(this.MediaPlayer)).EndInit();
 			this.ResumeLayout(false);
-			this.PerformLayout();
 
 		}
 
 		#endregion
 
-		private System.Windows.Forms.Label labelBottom;
 		private AxWMPLib.AxWindowsMediaPlayer MediaPlayer;
 	}
 }

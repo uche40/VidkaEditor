@@ -36,6 +36,11 @@ namespace Vidka.Core
 			this.proj = proj;
 		}
 
+		public void SetVideoPlayer(IVideoPlayer videoPlayer)
+		{
+			this.videoPlayer = videoPlayer;
+		}
+
 		#region ---------------- abstract and vertual methods -------------------
 
 		public abstract string Description { get; }
@@ -54,7 +59,7 @@ namespace Vidka.Core
 		/// Override to accept keyboard adjustments
 		/// See EditorLogic.LeftRightArrowKeys for call order and usage
 		/// </summary>
-		public virtual void ApplyFrameDelta(int deltaFrame) { }
+		public virtual void ApplyFrameDelta(long deltaFrame) { }
 	
 		/// <summary>
 		/// Override to accept keyboard adjustments
@@ -97,6 +102,16 @@ namespace Vidka.Core
 		/// or continue with the prev operation (false), ure returning false so u dont wanna be cancelled!
 		/// </summary>
 		public virtual bool DoesNewMouseDragCancelMe { get { return true; } }
+
+		/// <summary>
+		/// For those ops that might have a different behavior based on whether it is click or control click
+		/// </summary>
+		public virtual void ControlPressed() { }
+
+		/// <summary>
+		/// For those ops that might have a different behavior based on whether it is click or shift click
+		/// </summary>
+		public virtual void ShiftPressed() { }
 
 		#endregion
 

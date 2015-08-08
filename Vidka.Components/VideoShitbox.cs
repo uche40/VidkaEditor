@@ -16,6 +16,17 @@ namespace Vidka.Components {
 
 	public partial class VideoShitbox : UserControl, IVideoEditor
 	{
+		#region events
+		public delegate void TogglePreviewMode_Handler();
+		public event TogglePreviewMode_Handler PleaseTogglePreviewMode;
+
+		public delegate void PleaseToggleConsoleVisibility_Handler();
+		public event PleaseToggleConsoleVisibility_Handler PleaseToggleConsoleVisibility;
+
+		public delegate void PleaseSetPlayerAbsPosition_Handler(PreviewPlayerAbsoluteLocation location);
+		public event PleaseSetPlayerAbsPosition_Handler PleaseSetPlayerAbsPosition;
+		#endregion
+
 		// state
 		private RichTextBox txtConsole;
 		private bool isControlLoaded = false;
@@ -53,7 +64,7 @@ namespace Vidka.Components {
 		private void VideoShitbox_Scroll(object sender, ScrollEventArgs e)
 		{
 			if (e.ScrollOrientation == ScrollOrientation.HorizontalScroll) {
-				Logic.setNewHorizontalScrollOffset(e.NewValue);
+				Logic.setScrollX(e.NewValue);
 				Invalidate();
 			}
 		}
@@ -73,7 +84,7 @@ namespace Vidka.Components {
 				return;
 			}
 
-			Logic.setNewHorizontalScrollOffset(this.HorizontalScroll.Value);
+			Logic.setScrollX(this.HorizontalScroll.Value);
 			Invalidate();
 		}
 
@@ -136,20 +147,32 @@ namespace Vidka.Components {
 
 		public void VideoShitbox_KeyDown(object sender, KeyEventArgs e)
 		{
+			if (e.Control && e.KeyCode.IsLRShiftKey())
+				Logic.ControlPressed();
+			if (e.Shift && e.KeyCode.IsLRShiftKey())
+				Logic.ShiftPressed();
 			if (e.Control && e.KeyCode == Keys.S)
 				Logic.SaveTriggered();
 			else if (e.Control && e.KeyCode == Keys.O)
 				Logic.OpenTriggered();
 			else if (e.Control && e.Shift && e.KeyCode == Keys.E)
 				Logic.ExportToAvs();
+			else if (e.Control && e.KeyCode == Keys.Left)
+				Logic.LeftRightArrowKeys(Keys.Control | Keys.Left);
+			else if (e.Control && e.KeyCode == Keys.Right)
+				Logic.LeftRightArrowKeys(Keys.Control | Keys.Right);
 			else if (e.Control && e.KeyCode == Keys.Oemplus)
 				Logic.ZoomIn(Width);
 			else if (e.Control && e.KeyCode == Keys.OemMinus)
 				Logic.ZoomOut(Width);
 			else if (e.KeyCode == Keys.Space)
 				Logic.PlayPause();
+			else if (e.Control && e.Shift && e.KeyCode == Keys.B)
+				Logic.PreviewAvsSegmentInMplayer(true);
+			else if (e.Control && e.KeyCode == Keys.B)
+				Logic.PreviewAvsSegmentInMplayer(false);
 			else if (e.KeyCode == Keys.Home)
-				Logic.FrameMarkerToBeginning(Width);
+				Logic.SetFrameMarker_0_ForceRepaint();
 			else if (e.KeyCode == Keys.Enter)
 				Logic.EnterPressed();
 			else if (e.KeyCode == Keys.Escape)
@@ -160,6 +183,15 @@ namespace Vidka.Components {
 				Logic.Redo();
 			else if (e.KeyCode == Keys.S)
 				Logic.SplitCurClipVideo();
+			//else if (e.Control && e.KeyCode == Keys.G) {
+			else if (e.KeyCode == Keys.M) {
+				if (PleaseTogglePreviewMode != null)
+					PleaseTogglePreviewMode();
+			}
+			else if (e.KeyCode == Keys.N) {
+				if (PleaseToggleConsoleVisibility != null)
+					PleaseToggleConsoleVisibility();
+			}
 			else if (e.KeyCode == Keys.A)
 				Logic.SplitCurClipVideo_DeleteLeft();
 			else if (e.KeyCode == Keys.D)
@@ -175,7 +207,7 @@ namespace Vidka.Components {
 				case Keys.Right:
 				case Keys.Alt | Keys.Left:
 				case Keys.Alt | Keys.Right:
-					Logic.LeftRightArrowKeys(keyData, Width);
+					Logic.LeftRightArrowKeys(keyData);
 					break;
 			}
 			return base.ProcessCmdKey(ref msg, keyData);
@@ -278,6 +310,12 @@ namespace Vidka.Components {
 			});
 		}
 
+		public void AskToAbsoluteRepositionPreviewPlayer(PreviewPlayerAbsoluteLocation location) {
+			if (PleaseSetPlayerAbsPosition != null)
+				PleaseSetPlayerAbsPosition(location);
+		}
+
+
 		#endregion
 
 		#region ================================ object exchange ================================
@@ -338,6 +376,7 @@ namespace Vidka.Components {
 					Logic.Dimdim,
 					Height,
 					Logic.UiObjects.TrimHover,
+					Logic.UiObjects.TrimThreshPixels,
 					Logic.UiObjects.MouseDragFrameDelta);
 			//if (Logic.UiObjects.CurrentAudioClipHover != null)
 			//	drawOps.OutlineClipAudioHover(
@@ -365,6 +404,7 @@ namespace Vidka.Components {
 						? OutlineClipType.Hover
 						: OutlineClipType.Active,
 					Logic.UiObjects.TrimHover,
+					Logic.UiObjects.TrimThreshPixels,
 					Logic.UiObjects.CurrentMarkerFrame,
 					Logic.UiObjects.CurrentClipFrameAbsPos ?? 0,
 					Logic.UiObjects.MouseDragFrameDelta);

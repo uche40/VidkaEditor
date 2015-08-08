@@ -1,6 +1,6 @@
-﻿global proj_frameRate = 30
-global proj_width = 1280
-global proj_height = 720
+﻿global proj_frameRate = {proj-fps}
+global proj_width = {proj-width}
+global proj_height = {proj-height}
 global proj_audiorate = 44100
 global proj_audiochannels = 2
 audiorate = proj_audiorate
@@ -45,8 +45,7 @@ curStatMax = Max(curStatMax, stat_nRGB)
 
 #################### render ###########################
 
-UnalignedSplice( \
-{video-clips})
+{video-clips}
 
 #All these things we can chain outside on the NeutralClip function...
 # - FadeIn2 adds 2 frames, FadeIn adds 1 frame, FadeIn0 adds no frames (so use that one I guess).

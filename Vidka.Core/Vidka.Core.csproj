@@ -43,6 +43,7 @@
   <ItemGroup>
     <Compile Include="DragAndDropManager.cs" />
     <Compile Include="EditOperationAbstract.cs" />
+    <Compile Include="EditOperationSelectOriginalSegment.cs" />
     <Compile Include="EditOperationMoveVideo.cs" />
     <Compile Include="EditOperationTrimVideo.cs" />
     <Compile Include="EditorDraggy.cs" />
@@ -54,6 +55,8 @@
     <Compile Include="IVideoPlayer.cs" />
     <Compile Include="IVideoEditor.cs" />
     <Compile Include="Ops\MetaGeneratorInOtherThread.cs" />
+    <Compile Include="Ops\MEncoderMaveVideoFile.cs" />
+    <Compile Include="Ops\MPlayerPlaybackSegment.cs" />
     <Compile Include="Ops\VidkaFileMapping_resource.cs" />
     <Compile Include="Ops\VidkaFileMapping_proj.cs" />
     <Compile Include="Ops\VidkaFileMapping.cs" />

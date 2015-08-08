@@ -8,8 +8,6 @@ namespace Vidka.Core
 {
 	public interface IVideoPlayer
 	{
-		//TODO: test
-		void PlayFileTest(string filename);
 		// ... still frame
 		void SetStillFrameNone();
 		void SetStillFrame(string filename, double offsetSeconds);
@@ -18,5 +16,6 @@ namespace Vidka.Core
 		void StopWhateverYouArePlaying();
 		// ... misc
 		double GetPositionSec();
+		bool IsStopped();
 	}
 }

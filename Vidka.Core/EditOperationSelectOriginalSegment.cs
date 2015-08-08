@@ -8,7 +8,7 @@ using Vidka.Core.Model;
 
 namespace Vidka.Core
 {
-	class EditOperationMoveVideo : EditOperationAbstract
+	class EditOperationSelectOriginalSegment : EditOperationAbstract
 	{
 		private bool copyMode;
 		private bool keyboardMode;
@@ -17,7 +17,7 @@ namespace Vidka.Core
 		private int oldIndex;
 		private bool isStarted;
 
-		public EditOperationMoveVideo(ISomeCommonEditorOperations iEditor,
+		public EditOperationSelectOriginalSegment(ISomeCommonEditorOperations iEditor,
 			VidkaUiStateObjects uiObjects,
 			ProjectDimensions dimdim,
 			IVideoEditor editor,

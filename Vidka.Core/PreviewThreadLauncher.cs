@@ -17,6 +17,9 @@ namespace Vidka.Core
 		public int CurClipIndex { get; set; }
 		public long CurFrame { get; set; }
 		public double CurStopPositionSec { get; set; }
+		// both of these used for frame marker positioning
+		public long CurClipAbsFrameLeft { get; set; }
+		public long CurClipStartFrame { get; set; }
 	}
 
 	public class PreviewThreadLauncher
@@ -25,19 +28,25 @@ namespace Vidka.Core
 		private const double SECONDS_PAUSE_MAX = 0.3;
 		private const double STOP_BEFORE_THRESH = 1/30.0;
 		private IVideoPlayer player;
-		private IVideoEditor editor;
+		private ISomeCommonEditorOperations editor;
 		private PreviewThreadMutex mutex;
 		private Timer ticker;
 
 		//current state
-		
 
-		public PreviewThreadLauncher(IVideoPlayer player, IVideoEditor editor) {
+
+		public PreviewThreadLauncher(IVideoPlayer player, ISomeCommonEditorOperations editor) {
 			this.player = player;
 			this.editor = editor;
 			mutex = new PreviewThreadMutex();
 			ticker = new Timer();
 			ticker.Tick += PlaybackTickerFunc;
+		}
+
+		// called when swappng players for fast mode
+		public void SetPreviewPlayer(IVideoPlayer videoPlayer)
+		{
+			this.player = videoPlayer;
 		}
 
 		public void StartPreviewPlayback(VidkaProj proj, long frameStart)
@@ -68,9 +77,10 @@ namespace Vidka.Core
 			lock (mutex)
 			{
 				mutex.CurFrame++;
-				//editor.PlaybackSetFrameMarker(mutex.CurFrame);
-				var sec = player.GetPositionSec();
-				if (sec >= mutex.CurStopPositionSec - STOP_BEFORE_THRESH)
+				var secCurClip = player.GetPositionSec();
+				var frameMarkerPosition = mutex.CurClipAbsFrameLeft + mutex.Proj.SecToFrame(secCurClip) - mutex.CurClipStartFrame;
+				editor.SetFrameMarker_ForceRepaint(frameMarkerPosition);
+				if (secCurClip >= mutex.CurStopPositionSec - STOP_BEFORE_THRESH || player.IsStopped())
 				{
 					player.StopWhateverYouArePlaying();
 					mutex.CurClipIndex++;
@@ -92,6 +102,8 @@ namespace Vidka.Core
 
 		private void StartPlaybackOfClip(VidkaClipVideo clip, long? frameOffsetCustom = null)
 		{
+			mutex.CurClipAbsFrameLeft = mutex.Proj.GetVideoClipAbsFramePositionLeft(clip);
+			mutex.CurClipStartFrame = clip.FrameStart;
 			var clipSecStart = mutex.Proj.FrameToSec(frameOffsetCustom ?? clip.FrameStart); //hacky, i know
 			var clipSecEnd = mutex.Proj.FrameToSec(clip.FrameEnd); //hacky, i know
 			mutex.CurStopPositionSec = clipSecEnd;

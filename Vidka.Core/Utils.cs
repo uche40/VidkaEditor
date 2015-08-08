@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace Vidka.Core
 {
@@ -17,6 +18,5 @@ namespace Vidka.Core
 		public static string StringJoin(this IEnumerable<string> list, string separator) {
 			return string.Join(separator, list);
 		}
-		
 	}
 }

@@ -13,6 +13,11 @@ namespace Vidka.Core
 	/// </summary>
 	public class TaskQueueInOtherThread
 	{
+		#region events
+		public delegate void CurrentQueueFinishedHandler();
+		public event CurrentQueueFinishedHandler CurrentQueueFinished;
+		#endregion
+
 		// helpers and private
 		private Thread curThread;
 		private Queue<Action> queue;
@@ -53,6 +58,8 @@ namespace Vidka.Core
 			{
 				curThread = null;
 			}
+			if (CurrentQueueFinished != null)
+				CurrentQueueFinished();
 		}
 
 		/// <summary>

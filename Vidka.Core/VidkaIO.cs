@@ -35,18 +35,24 @@ namespace Vidka.Core
 			var sbClipStats = new StringBuilder();
 			var lastClip = Proj.ClipsVideo.LastOrDefault();
 			foreach (var clip in Proj.ClipsVideo) {
-				sbClips.Append(String.Format("\tNeutralClip(\"{0}\", {1}, {2}){3}\n",
+				sbClips.Append(String.Format("\tNeutralClip(\"{0}\", {1}, {2}){3}",
 					clip.FileName, clip.FrameStart, clip.FrameEnd,
-					(clip != lastClip) ? ", \\" : " \\"));
+					(clip != lastClip) ? ", \\\n" : " "));
 				sbClipStats.Append(String.Format("collectpixeltypestat(\"{0}\", {1})\n",
 					clip.FileName, clip.LengthFrameCalc));
 			}
 
 			// TODO: calc abs path based on exe
 			var templateStr = File.ReadAllText("App_data/template.avs");
+			var strVideoClips = (Proj.ClipsVideo.Count <= 1)
+				? sbClips.ToString()
+				: "UnalignedSplice( \\\n" + sbClips.ToString() + "\\\n)";
 			// TODO: inject project properties
 			var outputStr = templateStr
-				.Replace("{video-clips}", sbClips.ToString())
+				.Replace("{proj-fps}", "" + Proj.FrameRate)
+				.Replace("{proj-width}", "" + Proj.Width)
+				.Replace("{proj-height}", "" + Proj.Height)
+				.Replace("{video-clips}", strVideoClips)
 				.Replace("{collectpixeltypestat-videos}", sbClipStats.ToString())
 			;
 

@@ -38,7 +38,6 @@ namespace Vidka.Core.Model
 				vclip.FileLengthFrames = this.SecToFrame(vclip.FileLengthSec ?? 0); //TODO qwe
 			}
 		}
-
 	}
 
 	public class VidkaClip

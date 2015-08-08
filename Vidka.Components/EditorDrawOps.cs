@@ -26,7 +26,6 @@ namespace Vidka.Components
 		// constants
 		private const int THUMB_MARGIN = 20;
 		private const int THUMB_MARGIN_Y = 50;
-		private const int TRIM_MARKER_BRACKET_LENGTH = 30;
 		private Pen penDefault = new Pen(Color.Black, 1); // new Pen(Color.FromArgb(255, 30, 30, 30), 1);
 		private Pen penBorder = new Pen(Color.Black, 1);
 		private Pen penMarker = new Pen(Color.Black, 2);
@@ -260,6 +259,7 @@ namespace Vidka.Components
 			ProjectDimensions dimdim,
 			int Height,
 			TrimDirection trimDirection,
+			int trimBracketLength,
 			long framesActiveMouseTrim)
 		{
 			int y1 = dimdim.getY_main1(Height);
@@ -269,9 +269,9 @@ namespace Vidka.Components
 			int clipW = dimdim.convert_FrameToAbsX(vclip.LengthFrameCalc); // hacky, I know
 			g.DrawRectangle(penHover, x1, y1, clipW, y2 - y1);
 			if (trimDirection == TrimDirection.Left)
-				drawTrimBracket(g, x1, y1, y2, TrimDirection.Left, dimdim.convert_FrameToAbsX(framesActiveMouseTrim), dimdim);
+				drawTrimBracket(g, x1, y1, y2, TrimDirection.Left, trimBracketLength, dimdim.convert_FrameToAbsX(framesActiveMouseTrim), dimdim);
 			if (trimDirection == TrimDirection.Right)
-				drawTrimBracket(g, x1 + clipW, y1, y2, TrimDirection.Right, dimdim.convert_FrameToAbsX(framesActiveMouseTrim), dimdim);
+				drawTrimBracket(g, x1 + clipW, y1, y2, TrimDirection.Right, trimBracketLength, dimdim.convert_FrameToAbsX(framesActiveMouseTrim), dimdim);
 		}
 
 		public void OutlineClipAudioHover(Graphics g, VidkaClipAudio aclip, ProjectDimensions dimdim, int Height)
@@ -309,6 +309,7 @@ namespace Vidka.Components
 			int w, int h,
 			OutlineClipType type,
 			TrimDirection trimDirection,
+			int trimBracketLength,
 			long markerFrame,
 			long selectedClipFrameOffset,
 			long framesActiveMouseTrim)
@@ -341,11 +342,11 @@ namespace Vidka.Components
 			{
 				if (trimDirection == TrimDirection.Left) {
 					g.DrawLine(penActiveBoundary, xMain1 + xMainDelta, yMainTop, xOrig1 + xOrigDelta, y2);
-					drawTrimBracket(g, xOrig1, y1, y2, TrimDirection.Left, xOrigDelta, dimdim);
+					drawTrimBracket(g, xOrig1, y1, y2, TrimDirection.Left, trimBracketLength, xOrigDelta, dimdim);
 				}
 				if (trimDirection == TrimDirection.Right) {
 					g.DrawLine(penActiveBoundary, xMain2 + xMainDelta, yMainTop, xOrig2 + xOrigDelta, y2);
-					drawTrimBracket(g, xOrig2, y1, y2, TrimDirection.Right, xOrigDelta, dimdim);
+					drawTrimBracket(g, xOrig2, y1, y2, TrimDirection.Right, trimBracketLength, xOrigDelta, dimdim);
 				}
 			}
 
@@ -441,26 +442,26 @@ namespace Vidka.Components
 		/// Draws one red bracket if drag frames = 0. If there has been a drag > 0,
 		/// draws 2 brackets: one purple for original edge, one red for active (under mouse)
 		/// </summary>
-		private void drawTrimBracket(Graphics g, int x, int y1, int y2, TrimDirection trimDirection, int trimDeltaX, ProjectDimensions dimdim)
+		private void drawTrimBracket(Graphics g, int x, int y1, int y2, TrimDirection trimDirection, int bracketLength, int trimDeltaX, ProjectDimensions dimdim)
 		{
 			if (trimDeltaX == 0)
-				drawTrimBracketSingle(g, penActiveBoundary, x, y1, y2, trimDirection);
+				drawTrimBracketSingle(g, penActiveBoundary, x, y1, y2, trimDirection, bracketLength);
 			else
 			{
 				g.FillRectangle(brushHazy, Math.Min(x, x + trimDeltaX), y1, Math.Abs(trimDeltaX), y2-y1);
-				drawTrimBracketSingle(g, penActiveBoundaryPrev, x, y1, y2, trimDirection);
-				drawTrimBracketSingle(g, penActiveBoundary, x + trimDeltaX, y1, y2, trimDirection);
+				drawTrimBracketSingle(g, penActiveBoundaryPrev, x, y1, y2, trimDirection, bracketLength);
+				drawTrimBracketSingle(g, penActiveBoundary, x + trimDeltaX, y1, y2, trimDirection, bracketLength);
 			}
 		}
 
 		/// <summary>
 		/// Only used in drawTrimBracket()
 		/// </summary>
-		private void drawTrimBracketSingle(Graphics g, Pen pen, int x, int y1, int y2, TrimDirection direction)
+		private void drawTrimBracketSingle(Graphics g, Pen pen, int x, int y1, int y2, TrimDirection direction, int bracketLength)
 		{
 			var bracketDx = (direction == TrimDirection.Left)
-				? TRIM_MARKER_BRACKET_LENGTH
-				: -TRIM_MARKER_BRACKET_LENGTH;
+				? bracketLength
+				: -bracketLength;
 			g.DrawLine(pen, x, y1, x, y2);
 			g.DrawLine(pen, x, y1, x + bracketDx, y1);
 			g.DrawLine(pen, x, y2, x + bracketDx, y2);

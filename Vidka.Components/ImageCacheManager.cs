@@ -1,4 +1,6 @@
-﻿using System;
+﻿//#define OUTPUT_DEBUG_CXZXC
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -43,6 +45,12 @@ namespace Vidka.Components
 			rectThumb = new Rectangle(0, 0, ThumbnailTest.ThumbW, ThumbnailTest.ThumbH);
 			rectCrop = new Rectangle();
 			removeUnusedOnNextRepaint = false;
+
+			taskThread.CurrentQueueFinished += () => {
+				cxzxc("triggering ImagesReady");
+				if (ImagesReady != null)
+					ImagesReady();
+			};
 		}
 
 		public Bitmap getThumb(string filename, int index)
@@ -70,13 +78,14 @@ namespace Vidka.Components
 			{
 				thumbsNotUsed.AddRange(thumbsCache.Keys);
 				removeUnusedOnNextRepaint = false;
-				cxzxc("to-remove:" + thumbsNotUsed.Select(x => debug_urlIndex(x)).StringJoin(","));
 			}
 		}
 
 		public void ___paintEnd()
 		{
 			// remove images we are no longer using
+			cxzxc("___paintEnd");
+			cxzxc("to-remove:" + thumbsNotUsed.Select(x => debug_urlIndex(x)).StringJoin(","));
 			foreach (var notUsed in thumbsNotUsed)
 			{
 				cxzxc("removing " + debug_url(notUsed));
@@ -86,6 +95,7 @@ namespace Vidka.Components
 				thumbsCache.Remove(notUsed);
 				img.Dispose();
 			}
+			thumbsNotUsed.Clear();
 			cxzxc("to-add:" + requests.SelectMany(x => x.Value.Select(y => ""+y)).StringJoin(","));
 			// start loading any new images which we require
 			foreach (var filename in requests.Keys)
@@ -101,6 +111,8 @@ namespace Vidka.Components
 					foreach (var index in indices)
 					{
 						var url = getUrl(filename, index);
+						if (thumbsCache.ContainsKey(url))
+							continue;
 						Bitmap target = new Bitmap(ThumbnailTest.ThumbW, ThumbnailTest.ThumbH);
 						rectCrop.X = ThumbnailTest.ThumbW * (index % nCol);
 						rectCrop.Y = ThumbnailTest.ThumbH * (index / nRow);
@@ -112,20 +124,19 @@ namespace Vidka.Components
 						thumbsCache.Add(url, target);
 						if (thumbsCache.Count > MAX_ThumbsBeforeCleanseUnused)
 							removeUnusedOnNextRepaint = true;
+						// remove from requests
+						//requests[filename].Remove(index);
+						//if (requests[filename].Count == 0)
+						//	requests.Remove(filename);
 					}
 				});
 			}
-			if (requests.Count > 0)
-			{
-				requests.Clear();
-				taskThread.QueueThisUpPlease(() =>
-				{
-					cxzxc("triggering ImagesReady");
-					if (ImagesReady != null)
-						ImagesReady();
-				});
-			}
+			requests.Clear();
 		}
+
+		//#region ----------------------- concurrent ops --------------------------
+		//private void addThumb() {}
+		//#endregion
 
 		#region ----------------------- helpers --------------------------
 
@@ -150,14 +161,6 @@ namespace Vidka.Components
 			return img;
 		}
 
-		private void cxzxc(string message)
-		{
-			Trace.WriteLine(message);
-			if (VideoShitbox.ConsoleSingleton == null)
-				return;
-			VideoShitbox.ConsoleSingleton.AppendToConsole(VidkaConsoleLogLevel.Debug, message);
-		}
-
 		private string debug_urlIndex(string url)
 		{
 			var splits = url.Split(':');
@@ -168,6 +171,14 @@ namespace Vidka.Components
 		private string debug_url(string url) {
 			var index = debug_urlIndex(url);
 			return Path.GetFileName(url.Replace(":" + index, "")) + ':' + index;
+		}
+
+		private void cxzxc(string message) {
+#if OUTPUT_DEBUG_CXZXC
+			Trace.WriteLine(message);
+			if (VideoShitbox.ConsoleSingleton != null)
+				VideoShitbox.ConsoleSingleton.AppendToConsole(VidkaConsoleLogLevel.Debug, message);
+#endif
 		}
 
 		#endregion

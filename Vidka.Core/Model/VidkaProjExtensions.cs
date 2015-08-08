@@ -52,6 +52,21 @@ namespace Vidka.Core.Model
 				return null;
 			return proj.ClipsVideo[index];
 		}
+
+		/// <summary>
+		/// returns either the first or last clip if index is out of bounds respectively.
+		/// If there are no clips at all, returns null
+		/// </summary>
+		public static VidkaClipVideo GetVideoClipAtIndexForce(this VidkaProj proj, int index)
+		{
+			if (proj.ClipsVideo.Count == 0)
+				return null;
+			if (index < 0)
+				return proj.ClipsVideo.FirstOrDefault();
+			if (index >= proj.ClipsVideo.Count)
+				return proj.ClipsVideo.LastOrDefault();
+			return proj.ClipsVideo[index];
+		}
 		
 
 		/// <summary>
@@ -79,6 +94,23 @@ namespace Vidka.Core.Model
 		}
 
 		/// <summary>
+		/// Returns same thing as GetVideoClipIndexAtFrame, except when the marker is too far out,
+		/// it returns the last clip's index and frameOffset = clip.FrameEnd (again, relative to start of file)
+		/// If there are no clips at all, returns -1 and frameOffset is 0
+		/// </summary>
+		public static int GetVideoClipIndexAtFrame_forceOnLastClip(this VidkaProj proj, long curFrame, out long frameOffset)
+		{
+			var index = proj.GetVideoClipIndexAtFrame(curFrame, out frameOffset);
+			if (index == -1 && proj.ClipsVideo.Count > 0) {
+				// ze forcing...
+				index = proj.ClipsVideo.Count - 1;
+				frameOffset = proj.ClipsVideo[index].FrameEnd;
+			}
+			return index;
+		}
+		
+
+		/// <summary>
 		/// The inverse of GetVideoClipIndexAtFrame.
 		/// Instead returns the frame of the clip (left side) within project absolute frame space.
 		/// Returns -1 if the clip is not even in the project
@@ -95,16 +127,36 @@ namespace Vidka.Core.Model
 			return -1;
 		}
 
-		public static void SwitchVideoClips(this VidkaProj proj, int oldIndex, int newIndex)
+		public static VidkaProj Crop(this VidkaProj proj, long frameStart, long framesLength, int? newW=null, int? newH=null)
 		{
-			var clip = proj.ClipsVideo[oldIndex];
-			proj.ClipsVideo.RemoveAt(oldIndex);
-			if (newIndex > oldIndex)
-				newIndex -= 1; // we removed it, so it will be 1 less
-			if (newIndex >= proj.ClipsVideo.Count)
-				proj.ClipsVideo.Add(clip);
-			else
-				proj.ClipsVideo.Insert(newIndex, clip);
+			var newProj = new VidkaProj() {
+				FrameRate = proj.FrameRate,
+				Width = newW ?? proj.Width,
+				Height = newH ?? proj.Height,
+			};
+			long frameEnd = frameStart + framesLength;
+			long curFrame = 0;
+			foreach (var vclip in proj.ClipsVideo) {
+				var curFrame2 = curFrame + vclip.LengthFrameCalc; // abs right bound of vclip
+				// outside: too early
+				if (curFrame2 <= frameStart) {
+					curFrame += vclip.LengthFrameCalc;
+					continue;
+				}
+				// outside: too late
+				if (curFrame > frameEnd)
+					break;
+				var newVClip = vclip.MakeCopy();
+				// trim start, if neccessary
+				if (curFrame < frameStart)
+					newVClip.FrameStart += (frameStart - curFrame);
+				// trim end, if neccessary
+				if (curFrame2 > frameEnd)
+					newVClip.FrameEnd -= (curFrame2 - frameEnd);
+				newProj.ClipsVideo.Add(newVClip);
+				curFrame += vclip.LengthFrameCalc;
+			}
+			return newProj;
 		}
 
 		#endregion
