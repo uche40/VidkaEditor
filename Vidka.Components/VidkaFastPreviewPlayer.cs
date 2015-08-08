@@ -46,6 +46,7 @@ namespace Vidka.Components
 		public void SetStillFrameNone()
 		{
 			disposeOfOldBmpThumbs();
+			filenameVideo = null;
 			Invalidate();
 		}
 		public void SetStillFrame(string filename, double offsetSeconds)

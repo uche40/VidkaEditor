@@ -10,110 +10,95 @@ namespace Vidka.Core
 {
 	class EditOperationSelectOriginalSegment : EditOperationAbstract
 	{
-		private bool copyMode;
 		private bool keyboardMode;
-		private int clipX;
-		private int clipW;
-		private int oldIndex;
+		private long origFrame1;
+		private long origFrame2;
+		private long prevStart;
+		private long prevEnd;
 		private bool isStarted;
 
 		public EditOperationSelectOriginalSegment(ISomeCommonEditorOperations iEditor,
 			VidkaUiStateObjects uiObjects,
 			ProjectDimensions dimdim,
 			IVideoEditor editor,
-			IVideoPlayer videoPlayer,
-			bool copyMode = false)
+			IVideoPlayer videoPlayer)
 			: base(iEditor, uiObjects, dimdim, editor, videoPlayer)
 		{
-			this.copyMode = copyMode;
 			keyboardMode = false;
+			isStarted = false;
 		}
 
 		public override string Description { get {
-			return copyMode ? "Copy clip" : "Move cip";
+			return "Select Segment";
 		} }
+
+		public override bool TriggerBy_MouseDragStart(MouseButtons button, int x, int y)
+		{
+			return (button == MouseButtons.Right)
+				&& (uiObjects.TimelineHover == ProjectDimensionsTimelineType.Original)
+				&& (uiObjects.CurrentVideoClip != null);
+		}
 
 		public override void MouseDragStart(int x, int y, int w, int h)
 		{
 			IsDone = false;
-			// I assume its not null, otherwise how do u have CurrentAudioClipTrimHover?
-			var clip = uiObjects.CurrentVideoClipHover;
-			oldIndex = proj.ClipsVideo.IndexOf(clip);
-			clipX = dimdim.getScreenX1(clip);
-			clipW = dimdim.convert_FrameToAbsX(clip.LengthFrameCalc);
-			uiObjects.SetActiveVideo(clip, proj);
-			uiObjects.SetDraggyCoordinates(
-				mode: EditorDraggyMode.VideoTimeline,
-				//mode: EditorDraggyMode.AudioTimeline, //tmp f-b-f drag test
-				frameLength: clip.LengthFrameCalc,
-				mouseX: x,
-				mouseXOffset: x-clipX
-			);
-			if (!copyMode)
-				uiObjects.SetDraggyVideo(clip);
-			uiObjects.SetHoverVideo(null);
-			isStarted = false;
 			keyboardMode = false;
+			var clip = uiObjects.CurrentVideoClip;
+			prevStart = clip.FrameStart;
+			prevEnd = clip.FrameEnd;
+			origFrame1 = origFrame2 = ComputeOrigFrameFromMouseX(x, w);
+			uiObjects.SetActiveVideo(clip, proj);
 		}
 
 		public override void MouseDragged(int x, int y, int deltaX, int deltaY, int w, int h)
 		{
-			performDefensiveProgrammingCheck();
-			//if (isStarted) {} // TODO: consider this later
-			uiObjects.SetDraggyCoordinates(mouseX: x);
+			origFrame2 = ComputeOrigFrameFromMouseX(x, w);
+			var clip = uiObjects.CurrentVideoClip;
+			if (origFrame1 != origFrame2) {
+				clip.FrameStart = Math.Min(origFrame1, origFrame2);
+				clip.FrameEnd = Math.Max(origFrame1, origFrame2);
+				uiObjects.UiStateChanged();
+			}
+		}
+
+		private long ComputeOrigFrameFromMouseX(int x, int w)
+		{
+			var clip = uiObjects.CurrentVideoClip;
+			return (long)(clip.FileLengthFrames * x / w);
 		}
 
 		public override void MouseDragEnd(int x, int y, int deltaX, int deltaY, int w, int h)
 		{
-			performDefensiveProgrammingCheck();
-			var clip = uiObjects.CurrentVideoClip;
-			var clip_oldIndex = oldIndex;
-			int draggyVideoShoveIndex = dimdim.GetVideoClipDraggyShoveIndex(uiObjects.Draggy);
-			if (copyMode)
+			if (origFrame1 != origFrame2)
 			{
-				var newClip = copyMode ? clip.MakeCopy() : null;
-				iEditor.AddUndableAction_andFireRedo(new UndoableAction()
-				{
-					Redo = () => {
-						cxzxc("copy: " + clip_oldIndex + "->" + draggyVideoShoveIndex);
-						proj.ClipsVideo.Insert(draggyVideoShoveIndex, newClip);
-						uiObjects.SetActiveVideo(newClip, proj);
-						long frameMarker = proj.GetVideoClipAbsFramePositionLeft(newClip);
-						iEditor.SetFrameMarker_ShowFrameInPlayer(frameMarker);
-					},
-					Undo = () => {
-						cxzxc("UNDO copy");
-						proj.ClipsVideo.Remove(newClip);
-						uiObjects.SetActiveVideo(null, proj);
-					}
-				});
-			}
-			else if (draggyVideoShoveIndex != clip_oldIndex) {
-				if (draggyVideoShoveIndex > clip_oldIndex)
-					draggyVideoShoveIndex--;
+				var clip = uiObjects.CurrentVideoClip;
+				var newStart = Math.Min(origFrame1, origFrame2);
+				var newEnd = Math.Max(origFrame1, origFrame2);
+				var oldStart = prevStart;
+				var oldEnd = prevEnd;
 				iEditor.AddUndableAction_andFireRedo(new UndoableAction()
 				{
 					Redo = () =>
 					{
-						cxzxc("move: " + clip_oldIndex + "->" + draggyVideoShoveIndex);
-						proj.ClipsVideo.Remove(clip);
-						proj.ClipsVideo.Insert(draggyVideoShoveIndex, clip);
+						cxzxc("Select region");
+						clip.FrameStart = newStart;
+						clip.FrameEnd = newEnd;
 					},
 					Undo = () =>
 					{
-						cxzxc("UNDO move: " + draggyVideoShoveIndex + "->" + clip_oldIndex);
-						proj.ClipsVideo.Remove(clip);
-						proj.ClipsVideo.Insert(clip_oldIndex, clip);
+						cxzxc("UNDO Select region");
+						clip.FrameStart = oldStart;
+						clip.FrameEnd = oldEnd;
 					},
 					PostAction = () =>
 					{
-						long frameMarker = proj.GetVideoClipAbsFramePositionLeft(clip);
-						iEditor.SetFrameMarker_ShowFrameInPlayer(frameMarker);
 					}
 				});
+				uiObjects.UiStateChanged();
 			}
+			// TODO: change here for KB mode
 			IsDone = true;
-			copyMode = false;
+			keyboardMode = false;
 			uiObjects.ClearDraggy();
 			uiObjects.UiStateChanged();
 		}
@@ -122,14 +107,6 @@ namespace Vidka.Core
 		{
 			//TODO: kb mode???
 		}
-
-		public override void ControlPressed()
-		{
-			copyMode = true;
-			uiObjects.SetDraggyVideo(null);
-			cxzxc("Changed to copy mode");
-		}
-
 
 		public override void EnterPressed()
 		{
@@ -144,13 +121,5 @@ namespace Vidka.Core
 			uiObjects.SetTrimHover(TrimDirection.None);
 		}
 
-		//------------------------ privates --------------------------
-		private void performDefensiveProgrammingCheck()
-		{
-			if (uiObjects.CurrentVideoClip == null) // should never happen but who knows
-				throw new HowTheFuckDidThisHappenException(
-					proj,
-					String.Format(VidkaErrorMessages.MoveDragCurVideoNull));
-		}
 	}
 }

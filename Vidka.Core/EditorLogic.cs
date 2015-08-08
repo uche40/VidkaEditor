@@ -58,8 +58,7 @@ namespace Vidka.Core
 			EditOp_TrimRight,
 			EditOp_TrimLeftOriginal,
 			EditOp_TrimRightOriginal,
-			EditOp_MoveVideoClip,
-			EditOp_CopyVideoClip;
+			EditOp_MoveVideoClip;
 		private EditOperationAbstract[] EditOpsAll;
 		#endregion
 
@@ -89,7 +88,7 @@ namespace Vidka.Core
 				EditOp_TrimLeftOriginal = new EditOperationTrimVideo(this, UiObjects, Dimdim, editor, videoPlayer, TrimDirection.Left, true),
 				EditOp_TrimRightOriginal = new EditOperationTrimVideo(this, UiObjects, Dimdim, editor, videoPlayer, TrimDirection.Right, true),
 				EditOp_MoveVideoClip = new EditOperationMoveVideo(this, UiObjects, Dimdim, editor, videoPlayer),
-				EditOp_CopyVideoClip = new EditOperationMoveVideo(this, UiObjects, Dimdim, editor, videoPlayer, true),
+				new EditOperationSelectOriginalSegment(this, UiObjects, Dimdim, editor, videoPlayer),
 			};
 			setProjToAllEditOps(Proj);
 
@@ -701,7 +700,7 @@ namespace Vidka.Core
 		
 		#region ---------------------- mouse dragging operations -----------------------------
 
-		public void MouseDragStart(int x, int y, int w, int h)
+		public void MouseDragStart(MouseButtons button, int x, int y, int w, int h)
 		{
 			mouseX = x; // prob not needed, since it is always set in mouseMove, but whatever
 			
@@ -728,23 +727,26 @@ namespace Vidka.Core
 						break;
 				}
 
+				ActivateCorrectOp((op) => {
+					return op.TriggerBy_MouseDragStart(button, x, y);
+				});
+
 				// if previous op is still active and it allows us to 
-				CurEditOp = WhatMouseDragOperationDoWeGoInto();
-				if (CurEditOp != null)
-				{
-					CurEditOp.Init();
-					//editor.AppendToConsole(VidkaConsoleLogLevel.Info, "Edit mode: " + CurEditOp.Description);
-				}
-				else
-				{
-					var cursorFrame = (timeline == ProjectDimensionsTimelineType.Original && UiObjects.CurrentClip != null)
-					? (UiObjects.CurrentClipFrameAbsPos ?? 0) - UiObjects.CurrentClip.FrameStart + UiObjects.CurrentClip.FileLengthFrames * x / w
-					: Dimdim.convert_ScreenX2Frame(x);
-					// NOTE: if you want for negative frames to show original clip's thumb in player, remove this first  
-					if (cursorFrame < 0)
-						cursorFrame = 0;
-					SetFrameMarker_NoRepaint_ShowFrameInPlayer(cursorFrame);
-				}
+				//CurEditOp = WhatMouseDragOperationDoWeGoInto();
+				//if (CurEditOp != null)
+				//{
+				//	CurEditOp.Init();
+				//	//editor.AppendToConsole(VidkaConsoleLogLevel.Info, "Edit mode: " + CurEditOp.Description);
+				//}
+
+				// update current frame marker on mouse press
+				var cursorFrame = (timeline == ProjectDimensionsTimelineType.Original && UiObjects.CurrentClip != null)
+				? (UiObjects.CurrentClipFrameAbsPos ?? 0) - UiObjects.CurrentClip.FrameStart + UiObjects.CurrentClip.FileLengthFrames * x / w
+				: Dimdim.convert_ScreenX2Frame(x);
+				// NOTE: if you want for negative frames to show original clip's thumb in player, remove this first  
+				if (cursorFrame < 0)
+					cursorFrame = 0;
+				SetFrameMarker_NoRepaint_ShowFrameInPlayer(cursorFrame);
 			}
 			if (CurEditOp != null)
 				CurEditOp.MouseDragStart(x, y, w, h);
@@ -1026,35 +1028,14 @@ namespace Vidka.Core
 			return 0;
 		}
 
-		/// <summary>
-		/// Tries to understand the state of UiObjects and returns the right operation.
-		/// Used from MouseDragStart to "switch to the right gear"
-		/// </summary>
-		private EditOperationAbstract WhatMouseDragOperationDoWeGoInto()
+		private void ActivateCorrectOp(
+			Func<EditOperationAbstract, bool> trigger
+			//, Action<EditOperationAbstract> init
+			)
 		{
-			if (UiObjects.TimelineHover == ProjectDimensionsTimelineType.Main)
-			{
-				if (UiObjects.CurrentVideoClipHover != null)
-				{
-					if (UiObjects.TrimHover == TrimDirection.Left)
-						return EditOp_TrimLeft;
-					else if (UiObjects.TrimHover == TrimDirection.Right)
-						return EditOp_TrimRight;
-					else if (Form.ModifierKeys == Keys.Control)
-						return EditOp_CopyVideoClip;
-					else
-						return EditOp_MoveVideoClip;
-
-				}
-			}
-			else if (UiObjects.TimelineHover == ProjectDimensionsTimelineType.Original)
-			{
-				if (UiObjects.TrimHover == TrimDirection.Left)
-					return EditOp_TrimLeftOriginal;
-				else if (UiObjects.TrimHover == TrimDirection.Right)
-					return EditOp_TrimRightOriginal;
-			}
-			return null;
+			CurEditOp = EditOpsAll.FirstOrDefault(op => trigger(op));
+			if (CurEditOp != null)
+				CurEditOp.Init();
 		}
 
 		/// <summary>

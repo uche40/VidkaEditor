@@ -184,11 +184,11 @@ namespace Vidka.Components {
 			else if (e.KeyCode == Keys.S)
 				Logic.SplitCurClipVideo();
 			//else if (e.Control && e.KeyCode == Keys.G) {
-			else if (e.KeyCode == Keys.M) {
+			else if (e.KeyCode == Keys.P) {
 				if (PleaseTogglePreviewMode != null)
 					PleaseTogglePreviewMode();
 			}
-			else if (e.KeyCode == Keys.N) {
+			else if (e.KeyCode == Keys.O) {
 				if (PleaseToggleConsoleVisibility != null)
 					PleaseToggleConsoleVisibility();
 			}
@@ -223,7 +223,7 @@ namespace Vidka.Components {
 			mouseDown = true;
 			mouseDownX = e.X;
 			mouseDownY = e.Y;
-			Logic.MouseDragStart(e.X, e.Y, Width, Height);
+			Logic.MouseDragStart(e.Button, e.X, e.Y, Width, Height);
 		}
 
 		private void VideoShitbox_MouseUp(object sender, MouseEventArgs e)

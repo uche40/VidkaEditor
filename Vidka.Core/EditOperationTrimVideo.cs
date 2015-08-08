@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Windows.Forms;
 using Vidka.Core.Error;
 using Vidka.Core.Model;
 using Vidka.Core.Properties;
@@ -31,6 +32,15 @@ namespace Vidka.Core
 		public override string Description { get {
 			return "Trim video (" + side.ToString() + ")";
 		} }
+
+		public override bool TriggerBy_MouseDragStart(MouseButtons button, int x, int y)
+		{
+			return (button == MouseButtons.Left)
+				&& (uiObjects.TimelineHover != ProjectDimensionsTimelineType.Main
+				 || uiObjects.TimelineHover != ProjectDimensionsTimelineType.Original)
+				&& (uiObjects.CurrentVideoClipHover != null)
+				&& (uiObjects.TrimHover == side);
+		}
 
 		public override void MouseDragStart(int x, int y, int w, int h)
 		{

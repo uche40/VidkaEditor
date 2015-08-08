@@ -15,23 +15,30 @@ namespace Vidka.Core
 		private int clipX;
 		private int clipW;
 		private int oldIndex;
-		private bool isStarted;
+		private bool isStarted; // TODO: future plan to only initialize draggy when drag index is different... will avoid flickering... however there is no information about this index without the draggy
 
 		public EditOperationMoveVideo(ISomeCommonEditorOperations iEditor,
 			VidkaUiStateObjects uiObjects,
 			ProjectDimensions dimdim,
 			IVideoEditor editor,
-			IVideoPlayer videoPlayer,
-			bool copyMode = false)
+			IVideoPlayer videoPlayer)
 			: base(iEditor, uiObjects, dimdim, editor, videoPlayer)
 		{
-			this.copyMode = copyMode;
+			copyMode = false;
 			keyboardMode = false;
 		}
 
 		public override string Description { get {
 			return copyMode ? "Copy clip" : "Move cip";
 		} }
+
+		public override bool TriggerBy_MouseDragStart(MouseButtons button, int x, int y)
+		{
+			return (button == MouseButtons.Left)
+				&& (uiObjects.TimelineHover == ProjectDimensionsTimelineType.Main)
+				&& (uiObjects.CurrentVideoClipHover != null)
+				&& (uiObjects.TrimHover == TrimDirection.None);
+		}
 
 		public override void MouseDragStart(int x, int y, int w, int h)
 		{
@@ -49,6 +56,8 @@ namespace Vidka.Core
 				mouseX: x,
 				mouseXOffset: x-clipX
 			);
+			if (Form.ModifierKeys == Keys.Control)
+				copyMode = true;
 			if (!copyMode)
 				uiObjects.SetDraggyVideo(clip);
 			uiObjects.SetHoverVideo(null);
@@ -88,29 +97,33 @@ namespace Vidka.Core
 					}
 				});
 			}
-			else if (draggyVideoShoveIndex != clip_oldIndex) {
+			else
+			{
 				if (draggyVideoShoveIndex > clip_oldIndex)
 					draggyVideoShoveIndex--;
-				iEditor.AddUndableAction_andFireRedo(new UndoableAction()
+				if (draggyVideoShoveIndex != clip_oldIndex)
 				{
-					Redo = () =>
+					iEditor.AddUndableAction_andFireRedo(new UndoableAction()
 					{
-						cxzxc("move: " + clip_oldIndex + "->" + draggyVideoShoveIndex);
-						proj.ClipsVideo.Remove(clip);
-						proj.ClipsVideo.Insert(draggyVideoShoveIndex, clip);
-					},
-					Undo = () =>
-					{
-						cxzxc("UNDO move: " + draggyVideoShoveIndex + "->" + clip_oldIndex);
-						proj.ClipsVideo.Remove(clip);
-						proj.ClipsVideo.Insert(clip_oldIndex, clip);
-					},
-					PostAction = () =>
-					{
-						long frameMarker = proj.GetVideoClipAbsFramePositionLeft(clip);
-						iEditor.SetFrameMarker_ShowFrameInPlayer(frameMarker);
-					}
-				});
+						Redo = () =>
+						{
+							cxzxc("move: " + clip_oldIndex + "->" + draggyVideoShoveIndex);
+							proj.ClipsVideo.Remove(clip);
+							proj.ClipsVideo.Insert(draggyVideoShoveIndex, clip);
+						},
+						Undo = () =>
+						{
+							cxzxc("UNDO move: " + draggyVideoShoveIndex + "->" + clip_oldIndex);
+							proj.ClipsVideo.Remove(clip);
+							proj.ClipsVideo.Insert(clip_oldIndex, clip);
+						},
+						PostAction = () =>
+						{
+							long frameMarker = proj.GetVideoClipAbsFramePositionLeft(clip);
+							iEditor.SetFrameMarker_ShowFrameInPlayer(frameMarker);
+						}
+					});
+				}
 			}
 			IsDone = true;
 			copyMode = false;

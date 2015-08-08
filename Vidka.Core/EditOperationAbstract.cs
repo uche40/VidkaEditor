@@ -113,6 +113,16 @@ namespace Vidka.Core
 		/// </summary>
 		public virtual void ShiftPressed() { }
 
+		/// <summary>
+		/// Override this to return true when a mouse drag action is such that it triggers this edit op
+		/// </summary>
+		public virtual bool TriggerBy_MouseDragStart(MouseButtons button, int x, int y) { return false; }
+
+		/// <summary>
+		/// Override this to return true when a key press is such that it triggers this edit op
+		/// </summary>
+		public virtual bool TriggerBy_KeyPress(Keys key) { return false; }
+
 		#endregion
 
 		#region ---------------- helpers -------------------
@@ -126,5 +136,6 @@ namespace Vidka.Core
 		}
 
 		#endregion
+
 	}
 }
