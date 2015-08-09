@@ -12,8 +12,8 @@ namespace Vidka.Core
 	class EditOperationTrimVideo : EditOperationAbstract
 	{
 		private TrimDirection side;
+		private ProjectDimensionsTimelineType timeline;
 		private bool keyboardMode;
-		private bool isOriginal;
 
 		public EditOperationTrimVideo(ISomeCommonEditorOperations iEditor,
 			VidkaUiStateObjects uiObjects,
@@ -21,11 +21,11 @@ namespace Vidka.Core
 			IVideoEditor editor,
 			IVideoPlayer videoPlayer,
 			TrimDirection side,
-			bool isOriginal)
+			ProjectDimensionsTimelineType timeline)
 			: base(iEditor, uiObjects, dimdim, editor, videoPlayer)
 		{
 			this.side = side;
-			this.isOriginal = isOriginal;
+			this.timeline = timeline;
 			keyboardMode = false;
 		}
 
@@ -36,8 +36,7 @@ namespace Vidka.Core
 		public override bool TriggerBy_MouseDragStart(MouseButtons button, int x, int y)
 		{
 			return (button == MouseButtons.Left)
-				&& (uiObjects.TimelineHover != ProjectDimensionsTimelineType.Main
-				 || uiObjects.TimelineHover != ProjectDimensionsTimelineType.Original)
+				&& (uiObjects.TimelineHover == timeline)
 				&& (uiObjects.CurrentVideoClipHover != null)
 				&& (uiObjects.TrimHover == side);
 		}
@@ -55,7 +54,7 @@ namespace Vidka.Core
 		{
 			performDefensiveProgrammingCheck();
 			var clip = uiObjects.CurrentVideoClip;
-			var frameDelta = isOriginal
+			var frameDelta = (timeline == ProjectDimensionsTimelineType.Original)
 				? (long)(clip.FileLengthFrames * deltaX / w)
 				: dimdim.convert_AbsX2Frame(deltaX);
 			//cxzxc("fd:" + frameDelta + ",isO:" + isOriginal);

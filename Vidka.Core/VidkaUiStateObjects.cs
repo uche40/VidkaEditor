@@ -246,6 +246,17 @@ namespace Vidka.Core
 				frameLength: framesSampleQuarterScreen);
 		}
 
+		public void ClearAll()
+		{
+			ClearDraggy();
+			CurrentVideoClip = null;
+			CurrentAudioClip = null;
+			CurrentVideoClipHover = null;
+			CurrentAudioClipHover = null;
+			TrimHover = TrimDirection.None;
+			SetCurrentMarkerFrame(0);
+			stateChanged = true;
+		}
 	}
 
 	public enum TrimDirection {

@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Vidka.Components;
 using Vidka.Core;
+using Vidka.MainForm.Properties;
 
 namespace Vidka.MainForm {
 	public partial class MainForm : Form, IVidkaMainForm
@@ -46,6 +47,7 @@ namespace Vidka.MainForm {
 			videoShitbox.PleaseTogglePreviewMode += videoShitbox_PleaseTogglePreviewMode;
 			videoShitbox.PleaseToggleConsoleVisibility += videoShitbox_PleaseToggleConsoleVisibility;
 			videoShitbox.PleaseSetPlayerAbsPosition += videoShitbox_PleaseSetPlayerAbsPosition;
+			videoShitbox.PleaseSetFormTitle += videoShitbox_PleaseSetFormTitle;
 			
 			//TODO: maybe load these from configuration?
 			//setPreviewPlayer(VidkaPreviewMode.Normal);
@@ -54,9 +56,14 @@ namespace Vidka.MainForm {
 			setPreviewPlayer(VidkaPreviewMode.Fast);
 			setConsoleVisible(false);
 			setPlayerAbsoluteLocation(PreviewPlayerAbsoluteLocation.TopRight);
+
+			//==================================================================================== debug
+			logic.LoadProjFromFile(@"C:\Users\Mikhail\Desktop\asd2");
 		}
 
 		#region ------------------- callbacks ---------------------
+
+		#region ...videoShitbox callbacks...
 
 		private void videoShitbox_PleaseToggleConsoleVisibility()
 		{
@@ -73,6 +80,13 @@ namespace Vidka.MainForm {
 			setPlayerAbsoluteLocation(location);
 		}
 
+		private void videoShitbox_PleaseSetFormTitle(string title)
+		{
+			this.Text = title;
+		}
+
+		#endregion
+
 		private void txtConsole_TextChanged(object sender, EventArgs e)
 		{
 			txtConsole.SelectionStart = txtConsole.Text.Length; //Set the current caret position at the end
@@ -84,10 +98,78 @@ namespace Vidka.MainForm {
 			updatePlayerAbsoluteLocation();
 		}
 
+		private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
+		{
+			var proceed = ShouldIProceedIfProjectChanged();
+			if (!proceed)
+				e.Cancel = true;
+		}
+
+		#region ----------- menu ----------------
+
+		#region ...File...
+
 		private void newToolStripMenuItem_Click(object sender, EventArgs e)
 		{
-
+			var proceed = ShouldIProceedIfProjectChanged();
+			if (proceed)
+				logic.NewProjectPlease();
 		}
+
+		private void saveToolStripMenuItem_Click(object sender, EventArgs e)
+		{
+			logic.SaveTriggered();
+		}
+
+
+		private void openToolStripMenuItem_Click(object sender, EventArgs e)
+		{
+			var proceed = ShouldIProceedIfProjectChanged();
+			if (proceed)
+				logic.OpenTriggered();
+		}
+
+		private void saveAsToolStripMenuItem_Click(object sender, EventArgs e)
+		{
+			logic.SaveAsTriggered();
+		}
+
+		private void exportToVideoToolStripMenuItem_Click(object sender, EventArgs e)
+		{
+			logic.ExportToAvs();
+		}
+
+		private void quitToolStripMenuItem_Click(object sender, EventArgs e)
+		{
+			this.Close();
+		}
+
+		#endregion
+
+		#region ...View...
+
+		private void toggleConsoleToolStripMenuItem_Click(object sender, EventArgs e)
+		{
+			videoShitbox_PleaseToggleConsoleVisibility();
+		}
+
+		private void toggleFastModeToolStripMenuItem_Click(object sender, EventArgs e)
+		{
+			videoShitbox_PleaseTogglePreviewMode();
+		}
+
+		#endregion
+
+		#region ...Help...
+
+		private void viewOnGithubToolStripMenuItem_Click(object sender, EventArgs e)
+		{
+			videoShitbox.cxzxc("TODO: open in browser");
+		}
+
+		#endregion
+
+		#endregion
 
 		#endregion
 
@@ -213,7 +295,19 @@ namespace Vidka.MainForm {
 				panelPlayerHolder.Size = new Size(playerW, playerH);
 				panelPlayerHolder.Location = new Point(this.ClientSize.Width - panelPlayerHolder.Width, this.ClientSize.Height - panelPlayerHolder.Height);
 			}
-			
+		}
+
+		private bool ShouldIProceedIfProjectChanged()
+		{
+			if (logic.IsFileChanged && !Settings.Default.SuppressChangedFilePromptOnClose)
+			{
+				var wantToSave = MessageBox.Show("Save changes to " + logic.CurFileNameShort, "Save?", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+				if (wantToSave == DialogResult.Yes)
+					logic.SaveTriggered();
+				else if (wantToSave == DialogResult.Cancel)
+					return false;
+			}
+			return true;
 		}
 
 		#endregion

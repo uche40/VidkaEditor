@@ -25,6 +25,9 @@ namespace Vidka.Components {
 
 		public delegate void PleaseSetPlayerAbsPosition_Handler(PreviewPlayerAbsoluteLocation location);
 		public event PleaseSetPlayerAbsPosition_Handler PleaseSetPlayerAbsPosition;
+
+		public delegate void PleaseSetFormTitle_H(string title);
+		public event PleaseSetFormTitle_H PleaseSetFormTitle;
 		#endregion
 
 		// state
@@ -151,12 +154,12 @@ namespace Vidka.Components {
 				Logic.ControlPressed();
 			if (e.Shift && e.KeyCode.IsLRShiftKey())
 				Logic.ShiftPressed();
-			if (e.Control && e.KeyCode == Keys.S)
-				Logic.SaveTriggered();
-			else if (e.Control && e.KeyCode == Keys.O)
-				Logic.OpenTriggered();
-			else if (e.Control && e.Shift && e.KeyCode == Keys.E)
-				Logic.ExportToAvs();
+			//if (e.Control && e.KeyCode == Keys.S) // these are controlled from MainForm now
+			//	Logic.SaveTriggered();
+			//else if (e.Control && e.KeyCode == Keys.O)
+			//	Logic.OpenTriggered();
+			//else if (e.Control && e.Shift && e.KeyCode == Keys.E)
+			//	Logic.ExportToAvs();
 			else if (e.Control && e.KeyCode == Keys.Left)
 				Logic.LeftRightArrowKeys(Keys.Control | Keys.Left);
 			else if (e.Control && e.KeyCode == Keys.Right)
@@ -310,11 +313,15 @@ namespace Vidka.Components {
 			});
 		}
 
-		public void AskToAbsoluteRepositionPreviewPlayer(PreviewPlayerAbsoluteLocation location) {
+		public void AskTo_PleaseSetPlayerAbsPosition(PreviewPlayerAbsoluteLocation location) {
 			if (PleaseSetPlayerAbsPosition != null)
 				PleaseSetPlayerAbsPosition(location);
 		}
 
+		public void AskTo_PleaseSetFormTitle(string title) {
+			if (PleaseSetFormTitle != null)
+				PleaseSetFormTitle(title);
+		}
 
 		#endregion
 

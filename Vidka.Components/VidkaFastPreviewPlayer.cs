@@ -56,9 +56,11 @@ namespace Vidka.Components
 				disposeOfOldBmpThumbs();
 				this.filenameVideo = filename;
 				var filenameThumbs = fileMapping.AddGetThumbnailFilename(filename);
-				bmpThumbs = System.Drawing.Image.FromFile(filenameThumbs, true) as Bitmap;
-				bmpThumbs_nRow = bmpThumbs.Width / ThumbnailTest.ThumbW;
-				bmpThumbs_nCol = bmpThumbs.Height / ThumbnailTest.ThumbH;
+				if (File.Exists(filenameThumbs)) {
+					bmpThumbs = System.Drawing.Image.FromFile(filenameThumbs, true) as Bitmap;
+					bmpThumbs_nRow = bmpThumbs.Width / ThumbnailTest.ThumbW;
+					bmpThumbs_nCol = bmpThumbs.Height / ThumbnailTest.ThumbH;
+				}
 			}
 			this.offsetSeconds = offsetSeconds;
 			Invalidate();

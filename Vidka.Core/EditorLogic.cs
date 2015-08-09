@@ -51,16 +51,7 @@ namespace Vidka.Core
 		private EditOperationAbstract CurEditOp;
 		private VidkaIO ioOps;
 		private DragAndDropManager dragAndDropMan;
-
-		#region operations
-		private EditOperationAbstract
-			EditOp_TrimLeft,
-			EditOp_TrimRight,
-			EditOp_TrimLeftOriginal,
-			EditOp_TrimRightOriginal,
-			EditOp_MoveVideoClip;
 		private EditOperationAbstract[] EditOpsAll;
-		#endregion
 
 		// ... for other helper classes see the "object exchange" region
 
@@ -81,13 +72,14 @@ namespace Vidka.Core
 			UiObjects = new VidkaUiStateObjects();
 			previewLauncher = new PreviewThreadLauncher(videoPlayer, this);
 			ioOps = new VidkaIO();
+			IsFileChanged = false;
 
 			EditOpsAll = new EditOperationAbstract[] {
-				EditOp_TrimLeft = new EditOperationTrimVideo(this, UiObjects, Dimdim, editor, videoPlayer, TrimDirection.Left, false),
-				EditOp_TrimRight = new EditOperationTrimVideo(this, UiObjects, Dimdim, editor, videoPlayer, TrimDirection.Right, false),
-				EditOp_TrimLeftOriginal = new EditOperationTrimVideo(this, UiObjects, Dimdim, editor, videoPlayer, TrimDirection.Left, true),
-				EditOp_TrimRightOriginal = new EditOperationTrimVideo(this, UiObjects, Dimdim, editor, videoPlayer, TrimDirection.Right, true),
-				EditOp_MoveVideoClip = new EditOperationMoveVideo(this, UiObjects, Dimdim, editor, videoPlayer),
+				new EditOperationTrimVideo(this, UiObjects, Dimdim, editor, videoPlayer, TrimDirection.Left, ProjectDimensionsTimelineType.Main),
+				new EditOperationTrimVideo(this, UiObjects, Dimdim, editor, videoPlayer, TrimDirection.Right, ProjectDimensionsTimelineType.Main),
+				new EditOperationTrimVideo(this, UiObjects, Dimdim, editor, videoPlayer, TrimDirection.Left, ProjectDimensionsTimelineType.Original),
+				new EditOperationTrimVideo(this, UiObjects, Dimdim, editor, videoPlayer, TrimDirection.Right, ProjectDimensionsTimelineType.Original),
+				new EditOperationMoveVideo(this, UiObjects, Dimdim, editor, videoPlayer),
 				new EditOperationSelectOriginalSegment(this, UiObjects, Dimdim, editor, videoPlayer),
 			};
 			setProjToAllEditOps(Proj);
@@ -100,9 +92,6 @@ namespace Vidka.Core
 			dragAndDropMan.MetaReadyForOutstandingVideo += dragAndDropMan_MetaReadyForOutstandingVideo;
 			dragAndDropMan.MetaReadyForOutstandingAudio += dragAndDropMan_MetaReadyForOutstandingAudio;
 			dragAndDropMan.ThumbOrWaveReady += dragAndDropMan_ThumbOrWaveReady;
-
-//==================================================================================== debug
-			LoadProjFromFile(@"C:\Users\Mikhail\Desktop\asd2");
 		}
 
 		#region ============================= drag-drop =============================
@@ -188,17 +177,20 @@ namespace Vidka.Core
 
 		#region ============================= file save =============================
 
-		public void SaveTriggered() {
-			//TODO: request open file dialog
-			if (String.IsNullOrEmpty(curFilename))
-				curFilename = editor.OpenProjectSaveDialog();
-			if (String.IsNullOrEmpty(curFilename)) // still null? => user cancelled
-				return;
-
-			ioOps.SaveProjToFile(Proj, curFilename);
+		public void NewProjectPlease()
+		{
+			SetProj(new VidkaProj());
+			curFilename = null;
+			SetFileChanged(false);
+			___UiTransactionBegin();
+			UiObjects.ClearAll();
+			videoPlayer.SetStillFrameNone();
+			editor.AskTo_PleaseSetPlayerAbsPosition(PreviewPlayerAbsoluteLocation.TopRight);
+			___UiTransactionEnd();
 		}
 
-		public void OpenTriggered() {
+		public void OpenTriggered()
+		{
 			var filename = editor.OpenProjectOpenDialog();
 			if (String.IsNullOrEmpty(filename)) // still null? => user cancelled
 				return;
@@ -208,23 +200,27 @@ namespace Vidka.Core
 		public void LoadProjFromFile(string filename)
 		{
 			curFilename = filename;
+			editor.AskTo_PleaseSetFormTitle(curFilename);
+			SetFileChanged(false);
 
 			// load...
-			Proj = ioOps.LoadProjFromFile(curFilename);
-
-			// init...
-			Proj.Compile(); // set up filenames, etc, dunno
-
-			// set proj to all objects who care
-			Dimdim.setProj(Proj);
-			dragAndDropMan.SetProj(Proj);
-			setProjToAllEditOps(Proj);
+			var proj = ioOps.LoadProjFromFile(curFilename);
+			SetProj(proj);
 
 			// update UI...
 			___UiTransactionBegin();
 			SetFrameMarker_0_ForceRepaint();
 			UpdateCanvasWidthFromProjAndDimdim();
 			___UiTransactionEnd();
+		}
+
+		public void SaveTriggered()
+		{
+			SaveProject(curFilename);
+		}
+		public void SaveAsTriggered()
+		{
+			SaveProject(null);
 		}
 
 		public void ExportToAvs()
@@ -246,15 +242,30 @@ namespace Vidka.Core
 			editor.iiii("Done export.");
 		}
 
-		// TODO: future
-		//public void SaveProjToFile(string filename)
-		//{
-		//	throw new NotImplementedException();
-		//}
-		//public void ExportToAvs(string filename)
-		//{
-		//	throw new NotImplementedException();
-		//}
+		private void SetProj(VidkaProj proj)
+		{
+			Proj = proj;
+
+			// init...
+			Proj.Compile(); // set up filenames, etc, dunno
+
+			// set proj to all objects who care
+			Dimdim.setProj(Proj);
+			dragAndDropMan.SetProj(Proj);
+			setProjToAllEditOps(Proj);
+		}
+
+		private void SaveProject(string filename)
+		{
+			if (String.IsNullOrEmpty(filename))
+				filename = editor.OpenProjectSaveDialog();
+			if (String.IsNullOrEmpty(filename)) // still null? => user cancelled
+				return;
+
+			ioOps.SaveProjToFile(Proj, filename);
+			curFilename = filename;
+			SetFileChanged(false);
+		}
 
 		#endregion
 
@@ -273,6 +284,13 @@ namespace Vidka.Core
 		/// </summary>
 		public VidkaUiStateObjects UiObjects { get; private set; }
 		public VidkaFileMapping FileMapping { get; private set; }
+		public bool IsFileChanged { get; private set; }
+		public string CurFileName { get {
+			return curFilename;
+		} }
+		public string CurFileNameShort { get {
+			return Path.GetFileName(curFilename);
+		} }
 
 		public void SetPreviewPlayer(IVideoPlayer videoPlayer)
 		{
@@ -321,7 +339,7 @@ namespace Vidka.Core
 			if (UiObjects.DidSomethingChange())
 				editor.PleaseRepaint();
 			if (UiObjects.DidSomethingChange_originalTimeline())
-				editor.AskToAbsoluteRepositionPreviewPlayer((UiObjects.CurrentClip != null)
+				editor.AskTo_PleaseSetPlayerAbsPosition((UiObjects.CurrentClip != null)
 					? PreviewPlayerAbsoluteLocation.BottomRight
 					: PreviewPlayerAbsoluteLocation.TopRight);
 		}
@@ -664,6 +682,7 @@ namespace Vidka.Core
 			action.Redo();
 			if (action.PostAction != null)
 				action.PostAction();
+			SetFileChanged(true);
 			___Ui_stateChanged();
 			___UiTransactionEnd();
 		}
@@ -678,6 +697,7 @@ namespace Vidka.Core
 			action.Undo();
 			if (action.PostAction != null)
 				action.PostAction();
+			SetFileChanged(true);
 			___Ui_stateChanged();
 			___UiTransactionEnd();
 		}
@@ -692,8 +712,15 @@ namespace Vidka.Core
 			action.Redo();
 			if (action.PostAction != null)
 				action.PostAction();
+			SetFileChanged(true);
 			___Ui_stateChanged();
 			___UiTransactionEnd();
+		}
+
+		private void SetFileChanged(bool changed)
+		{
+			IsFileChanged = changed;
+			editor.AskTo_PleaseSetFormTitle((curFilename ?? "Untitled") + (changed ? " *" : ""));
 		}
 
 		#endregion
@@ -1052,6 +1079,5 @@ namespace Vidka.Core
 		#endregion
 
 		#endregion
-		
 	}
 }
