@@ -16,6 +16,7 @@ namespace Vidka.Core
 		// vertical subdivisions
 		private ProjectDimensionsTimeline[] timelines;
 		private ProjectDimensionsTimeline tlMain, tlOriginal, tlAudios;
+		private int tlAxisHeight;
 
 		// horizontal frame
 		// TODO: save these values in a editor pref file so that next time the program is open, the same zoom is there
@@ -34,6 +35,7 @@ namespace Vidka.Core
 			tlMain = new ProjectDimensionsTimeline(45, 70, ProjectDimensionsTimelineType.Main) { yHalfway = 60 };
 			tlAudios = new ProjectDimensionsTimeline(75, 90, ProjectDimensionsTimelineType.Audios);
 			timelines = new ProjectDimensionsTimeline[] { tlOriginal, tlMain, tlAudios };
+			tlAxisHeight = 6;
 		}
 
 		public void setProj(VidkaProj proj) {
@@ -255,6 +257,9 @@ namespace Vidka.Core
 		public int getY_audio2(int h) {
 			return h * tlAudios.y2100 / 100;
 		}
+		public int getY_timeAxisHeight(int h) {
+			return h * tlAxisHeight / 100;
+		}
 
 		#endregion
 
@@ -268,25 +273,11 @@ namespace Vidka.Core
 		}
 
 		/// <summary>
-		/// Converts second to x-coordinate (absolute)
-		/// </summary>
-		//public int convert_SecToAbsX(double sec) {
-		//	return (int)(sec * PIXEL_PER_SEC * zoom);
-		//}
-
-		/// <summary>
 		/// Converts frame to x-coordinate on screen
 		/// </summary>
 		public int convert_Frame2ScreenX(long frame) {
 			return convert_FrameToAbsX(frame) - scrollx;
 		}
-
-		/// <summary>
-		/// Converts second to x-coordinate on screen
-		/// </summary>
-		//public int convert_Sec2ScreenX(double sec) {
-		//	return convert_SecToAbsX(sec) - scrollx;
-		//}
 
 		/// <summary>
 		/// Converts x-coordinate (on screen!!!) to frame
@@ -296,12 +287,40 @@ namespace Vidka.Core
 		}
 
 		/// <summary>
+		/// Converts x-coordinate (on screen!!!) to frame on the original timeline
+		/// </summary>
+		public long convert_ScreenX2Frame_OriginalTimeline(int x, long lengthFile, int screenW) {
+			return (long)(lengthFile * x / screenW);
+		}
+
+		/// <summary>
+		/// Converts frmae to x-coordinate (on screen!!!) on the original timeline
+		/// </summary>
+		public int convert_Frame2ScreenX_OriginalTimeline(long frame, long lengthFile, int screenW) {
+			return (int)((float)screenW * frame / lengthFile);
+		}
+
+		/// <summary>
 		/// Converts x-coordinate (absolute) to frame.
 		/// Used in deltaX --> nFrames conversion
 		/// </summary>
 		public long convert_AbsX2Frame(int x)
 		{
 			return (long)((x) / PIXEL_PER_FRAME / zoom);
+		}
+
+		/// <summary>
+		/// Converts second to x-coordinate (absolute). Used for draing Axis when fps is not a round int (29.9)
+		/// </summary>
+		public int convert_SecToAbsX(double sec) {
+			return (int)(proj.SecToFrameDouble(sec) * PIXEL_PER_FRAME * zoom);
+		}
+
+		/// <summary>
+		/// Converts second to x-coordinate on screen. Used for draing Axis when fps is not a round int (29.9)
+		/// </summary>
+		public int convert_Sec2ScreenX(double sec) {
+			return convert_SecToAbsX(sec) - scrollx;
 		}
 
 		/// <summary>
@@ -338,5 +357,6 @@ namespace Vidka.Core
 
 		#endregion
 
+		
 	}
 }

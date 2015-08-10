@@ -55,7 +55,7 @@ namespace Vidka.Core
 			performDefensiveProgrammingCheck();
 			var clip = uiObjects.CurrentVideoClip;
 			var frameDelta = (timeline == ProjectDimensionsTimelineType.Original)
-				? (long)(clip.FileLengthFrames * deltaX / w)
+				? dimdim.convert_ScreenX2Frame_OriginalTimeline(deltaX, clip.FileLengthFrames, w)
 				: dimdim.convert_AbsX2Frame(deltaX);
 			//cxzxc("fd:" + frameDelta + ",isO:" + isOriginal);
 			var frameDeltaContrained = clip.HowMuchCanBeTrimmed(side, frameDelta);
@@ -92,11 +92,10 @@ namespace Vidka.Core
 							clip.FrameEnd -= deltaConstrained;
 					},
 					PostAction = () => {
-						long frameMarker = proj.GetVideoClipAbsFramePositionLeft(clip);
-						var rightThreshFrames = proj.SecToFrame(Settings.Default.RightTrimMarkerOffsetSeconds);
-						if (side == TrimDirection.Right && clip.LengthFrameCalc > rightThreshFrames)
-							frameMarker += clip.LengthFrameCalc - rightThreshFrames;
-						iEditor.SetFrameMarker_ShowFrameInPlayer(frameMarker);
+						if (side == TrimDirection.Left)
+							iEditor.SetFrameMarker_LeftOfVClip(clip, proj);
+						else if (side == TrimDirection.Right)
+							iEditor.SetFrameMarker_RightOfVClipJustBefore(clip, proj);
 					}
 				});
 			}

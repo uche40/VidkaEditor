@@ -46,25 +46,24 @@ namespace Vidka.Core
 			var clip = uiObjects.CurrentVideoClip;
 			prevStart = clip.FrameStart;
 			prevEnd = clip.FrameEnd;
-			origFrame1 = origFrame2 = ComputeOrigFrameFromMouseX(x, w);
+			origFrame1 = origFrame2 = dimdim.convert_ScreenX2Frame_OriginalTimeline(x, clip.FileLengthFrames, w);
+			var clipAbsLeftFrame = proj.GetVideoClipAbsFramePositionLeft(clip);
 			uiObjects.SetActiveVideo(clip, proj);
+			uiObjects.SetCurrentMarkerFrame(clipAbsLeftFrame);
+			uiObjects.SetOriginalTimelinePlaybackMode(false);
+			updateVideoPlayerFromFrame2();
 		}
 
 		public override void MouseDragged(int x, int y, int deltaX, int deltaY, int w, int h)
 		{
-			origFrame2 = ComputeOrigFrameFromMouseX(x, w);
 			var clip = uiObjects.CurrentVideoClip;
+			origFrame2 = dimdim.convert_ScreenX2Frame_OriginalTimeline(x, clip.FileLengthFrames, w);
 			if (origFrame1 != origFrame2) {
 				clip.FrameStart = Math.Min(origFrame1, origFrame2);
 				clip.FrameEnd = Math.Max(origFrame1, origFrame2);
 				uiObjects.UiStateChanged();
 			}
-		}
-
-		private long ComputeOrigFrameFromMouseX(int x, int w)
-		{
-			var clip = uiObjects.CurrentVideoClip;
-			return (long)(clip.FileLengthFrames * x / w);
+			updateVideoPlayerFromFrame2();
 		}
 
 		public override void MouseDragEnd(int x, int y, int deltaX, int deltaY, int w, int h)
@@ -92,6 +91,8 @@ namespace Vidka.Core
 					},
 					PostAction = () =>
 					{
+						long frameMarker = proj.GetVideoClipAbsFramePositionLeft(clip);
+						iEditor.SetFrameMarker_ShowFrameInPlayer(frameMarker);
 					}
 				});
 				uiObjects.UiStateChanged();
@@ -119,6 +120,14 @@ namespace Vidka.Core
 			IsDone = false;
 			keyboardMode = false;
 			uiObjects.SetTrimHover(TrimDirection.None);
+		}
+
+
+		//-------------------- helpers ------------------------------
+
+		private void updateVideoPlayerFromFrame2() {
+			var second = proj.FrameToSec(origFrame2);
+			videoPlayer.SetStillFrame(uiObjects.CurrentVideoClip.FileName, second);
 		}
 
 	}

@@ -46,12 +46,13 @@ namespace Vidka.Core
 		private IVideoEditor editor;
 		private IVideoPlayer videoPlayer;
 		
-		// helper logic classes
+		// helper and logic classes
 		private PreviewThreadLauncher previewLauncher;
 		private EditOperationAbstract CurEditOp;
 		private VidkaIO ioOps;
 		private DragAndDropManager dragAndDropMan;
 		private EditOperationAbstract[] EditOpsAll;
+		private VidkaProj Proj_forOriginalPlayback; // fake proj used to playback on the original timeline (when the curtain/OriginalTimelinePlaybackMode is on)
 
 		// ... for other helper classes see the "object exchange" region
 
@@ -72,6 +73,7 @@ namespace Vidka.Core
 			UiObjects = new VidkaUiStateObjects();
 			previewLauncher = new PreviewThreadLauncher(videoPlayer, this);
 			ioOps = new VidkaIO();
+			Proj_forOriginalPlayback = new VidkaProj();
 			IsFileChanged = false;
 
 			EditOpsAll = new EditOperationAbstract[] {
@@ -183,6 +185,8 @@ namespace Vidka.Core
 			curFilename = null;
 			SetFileChanged(false);
 			___UiTransactionBegin();
+			undoStack.Clear();
+			redoStack.Clear();
 			UiObjects.ClearAll();
 			videoPlayer.SetStillFrameNone();
 			editor.AskTo_PleaseSetPlayerAbsPosition(PreviewPlayerAbsoluteLocation.TopRight);
@@ -199,6 +203,12 @@ namespace Vidka.Core
 
 		public void LoadProjFromFile(string filename)
 		{
+			if (!File.Exists(filename))
+			{
+				editor.ShowErrorMessage("Too much vodka?", "Do you realize the file " + Path.GetFileName(filename) + " does nota exista?");
+				return;
+			}
+
 			curFilename = filename;
 			editor.AskTo_PleaseSetFormTitle(curFilename);
 			SetFileChanged(false);
@@ -520,7 +530,7 @@ namespace Vidka.Core
 		}
 
 		/// <summary>
-		/// Used from within this class, when arrow keys are pressed,
+		/// Used from within this class, on mouse press, when arrow keys are pressed,
 		/// by drag ops and other ops (e.g. or when a clip is deleted)
 		/// </summary>
 		public long SetFrameMarker_ShowFrameInPlayer(long frame)
@@ -532,16 +542,6 @@ namespace Vidka.Core
 			return frame;
 		}
 
-		/// <summary>
-		/// Used from within this class, when mouse is Pressed (clicked)
-		/// </summary>
-		private void SetFrameMarker_NoRepaint_ShowFrameInPlayer(long frame)
-		{
-			printFrameToConsole(frame);
-			UiObjects.SetCurrentMarkerFrame(frame);
-			ShowFrameInVideoPlayer(UiObjects.CurrentMarkerFrame); // one more thing... unrelated... update the doggamn WMP
-		}
-
 		private void printFrameToConsole(long frame) {
 			var sec = Proj.FrameToSec(frame);
 			var secFloor = (long)sec;
@@ -550,12 +550,15 @@ namespace Vidka.Core
 			var timeSpan = TimeSpan.FromSeconds(secFloor);
 			cxzxc(String.Format("frame={0} ({1}.{2})"
 				, frame
-				, timeSpan.ToString((timeSpan.TotalHours >= 1) ? @"hh\:mm\:ss" : @"mm\:ss")
+				, timeSpan.ToString_MinuteOrHour()
 				, frameRemainder));
 		}
 
 		private void updateFrameOfViewFromMarker()
 		{
+			if (UiObjects.OriginalTimelinePlaybackMode)
+				return;
+
 			//var frame = UiObjects.CurrentMarkerFrame;
 			var screenX = Dimdim.convert_Frame2ScreenX(UiObjects.CurrentMarkerFrame);
 			var absX = Dimdim.convert_FrameToAbsX(UiObjects.CurrentMarkerFrame);
@@ -631,7 +634,21 @@ namespace Vidka.Core
 		public void PlayPause()
 		{
 			if (!previewLauncher.IsPlaying)
-				previewLauncher.StartPreviewPlayback(Proj, UiObjects.CurrentMarkerFrame);
+			{
+				if (UiObjects.OriginalTimelinePlaybackMode)
+				{
+					var clip = UiObjects.CurrentClip;
+					Proj_forOriginalPlayback.ClipsVideo.Clear();
+					Proj_forOriginalPlayback.ClipsVideo.Add(new VidkaClipVideo {
+						FrameStart = 0,
+						FrameEnd = clip.FileLengthFrames,
+						FileName = clip.FileName,
+					});
+					previewLauncher.StartPreviewPlayback(Proj_forOriginalPlayback, UiObjects.CurrentMarkerFrame);
+				}
+				else
+					previewLauncher.StartPreviewPlayback(Proj, UiObjects.CurrentMarkerFrame);
+			}
 			else
 				previewLauncher.StopPlayback();
 		}
@@ -758,22 +775,43 @@ namespace Vidka.Core
 					return op.TriggerBy_MouseDragStart(button, x, y);
 				});
 
-				// if previous op is still active and it allows us to 
-				//CurEditOp = WhatMouseDragOperationDoWeGoInto();
-				//if (CurEditOp != null)
-				//{
-				//	CurEditOp.Init();
-				//	//editor.AppendToConsole(VidkaConsoleLogLevel.Info, "Edit mode: " + CurEditOp.Description);
-				//}
-
-				// update current frame marker on mouse press
-				var cursorFrame = (timeline == ProjectDimensionsTimelineType.Original && UiObjects.CurrentClip != null)
-				? (UiObjects.CurrentClipFrameAbsPos ?? 0) - UiObjects.CurrentClip.FrameStart + UiObjects.CurrentClip.FileLengthFrames * x / w
-				: Dimdim.convert_ScreenX2Frame(x);
-				// NOTE: if you want for negative frames to show original clip's thumb in player, remove this first  
-				if (cursorFrame < 0)
-					cursorFrame = 0;
-				SetFrameMarker_NoRepaint_ShowFrameInPlayer(cursorFrame);
+				// update current frame marker on left click press
+				if (button == MouseButtons.Left)
+				{
+					if (timeline == ProjectDimensionsTimelineType.Original && UiObjects.CurrentClip != null)
+					{
+						var clip = UiObjects.CurrentClip;
+						var cursorFrame = Dimdim.convert_ScreenX2Frame_OriginalTimeline(x, clip.FileLengthFrames, w);
+						if (cursorFrame < 0)
+							cursorFrame = 0;
+						if (cursorFrame >= clip.FrameStart && cursorFrame < clip.FrameEnd) {
+							UiObjects.SetOriginalTimelinePlaybackMode(false);
+							SetFrameMarker_ShowFrameInPlayer(cursorFrame - (UiObjects.CurrentClipFrameAbsPos ?? 0) - UiObjects.CurrentClip.FrameStart);
+						}
+						else {
+							// we are outside the clip bounds on the original timeline,
+							// so I assume user wants to view some external segment on original
+							// and I will switch to OriginalTimelinePlayback
+							printFrameToConsole(cursorFrame);
+							UiObjects.SetOriginalTimelinePlaybackMode(true);
+							UiObjects.SetCurrentMarkerFrame(cursorFrame);
+							// show in video player
+							var secOffset = Proj.FrameToSec(cursorFrame);
+							videoPlayer.SetStillFrame(clip.FileName, secOffset);
+						}
+					}
+					else
+					{
+						UiObjects.SetOriginalTimelinePlaybackMode(false);
+						var cursorFrame = Dimdim.convert_ScreenX2Frame(x);
+						if (cursorFrame < 0)
+							cursorFrame = 0;
+						SetFrameMarker_ShowFrameInPlayer(cursorFrame);
+					}
+						// ? (UiObjects.CurrentClipFrameAbsPos ?? 0) - UiObjects.CurrentClip.FrameStart + UiObjects.CurrentClip.FileLengthFrames * x / w
+						// : Dimdim.convert_ScreenX2Frame(x);
+					// NOTE: if you want for negative frames to show original clip's thumb in player, remove this first  
+				}
 			}
 			if (CurEditOp != null)
 				CurEditOp.MouseDragStart(x, y, w, h);
@@ -912,7 +950,8 @@ namespace Vidka.Core
 					cxzxc("splitL: start=" + frameOffsetStartOfVideo);
 					clip.FrameStart = frameOffsetStartOfVideo;
 					UpdateCanvasWidthFromProjAndDimdim();
-				}
+				},
+				//PostAction = () => {} // marker stays where it is...
 			});
 		}
 
@@ -937,7 +976,10 @@ namespace Vidka.Core
 					cxzxc("splitR: end=" + frameOffsetStartOfVideo);
 					clip.FrameEnd = frameOffsetStartOfVideo;
 					UpdateCanvasWidthFromProjAndDimdim();
-				}
+				},
+				PostAction = () => {
+					this.SetFrameMarker_RightOfVClipJustBefore(clip, Proj);
+				} // marker stays where it is...
 			});
 		}
 
@@ -1015,6 +1057,29 @@ namespace Vidka.Core
 				UpdateCanvasWidthFromProjAndDimdim();
 			}
 		}
+
+		public void ToggleLockOnCurSelectedClip()
+		{
+			if (UiObjects.CurrentClip == null)
+				return;
+			var clip = UiObjects.CurrentClip;
+			var oldValue = clip.IsLocked;
+			var newValue = !oldValue;
+			AddUndableAction_andFireRedo(new UndoableAction
+			{
+				Redo = () =>
+				{
+					cxzxc("lock clip");
+					clip.IsLocked = newValue;
+				},
+				Undo = () =>
+				{
+					cxzxc("UNDO lock clip");
+					clip.IsLocked = oldValue;
+				},
+			});
+		}
+
 
 		#endregion
 

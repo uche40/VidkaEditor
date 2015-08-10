@@ -17,6 +17,9 @@ namespace Vidka.Core.Model
 		public static int SecToFrame(this VidkaProj proj, double sec) {
 			return (int)(sec * proj.FrameRate);
 		}
+		public static double SecToFrameDouble(this VidkaProj proj, double sec) {
+			return sec * proj.FrameRate;
+		}
 
 		/// <summary>
 		/// used in ProjectDimensions.recalculateProjectWidth.

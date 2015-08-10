@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Vidka.Components.Properties;
 using Vidka.Core;
 using Vidka.Core.Model;
 using Vidka.Core.Ops;
@@ -19,7 +20,6 @@ namespace Vidka.Components
 		Hover = 1,
 		Active = 2,
 	}
-
 
 	public class EditorDrawOps
 	{
@@ -42,6 +42,7 @@ namespace Vidka.Components
 		private Brush brushActive = new SolidBrush(Color.LightBlue);
 		private Brush brushWhite = new SolidBrush(Color.White);
 		private Brush brushHazy = new SolidBrush(Color.FromArgb(200, 230, 230, 230));
+		private Brush brushHazyCurtain = new SolidBrush(Color.FromArgb(200, 230, 230, 230)); //new SolidBrush(Color.FromArgb(200, 180, 180, 180));
 		private Font fontDefault = SystemFonts.DefaultFont;
 
 		// helpers
@@ -65,6 +66,45 @@ namespace Vidka.Components
 			g.FillRectangle((hover == ProjectDimensionsTimelineType.Main) ? brushLightGray2 : brushLightGray, 0, yMain1, w, yMainHalf - yMain1);
 			g.FillRectangle((hover == ProjectDimensionsTimelineType.Main) ? brushLightGray3 : brushLightGray2, 0, yMainHalf, w, yMain2 - yMainHalf);
 			g.FillRectangle((hover == ProjectDimensionsTimelineType.Audios) ? brushLightGray3 : brushLightGray2, 0, yAudio1, w, yAudio2 - yAudio1);
+		}
+
+		public void DrawTimeAxis(Graphics g, ProjectDimensions dimdim, int w, int h, VidkaProj proj)
+		{
+			// compute how many segments/ticks/etc to draw
+			var frameStart = dimdim.convert_ScreenX2Frame(0);
+			var frameEnd = dimdim.convert_ScreenX2Frame(w);
+			int nSegments = w / Settings.Default.MinnimumTimelineSegmentSizeInPixels;
+			long framesPerSegment = (frameEnd - frameStart) / nSegments;
+			int secondsPerSegment = (int)(framesPerSegment / proj.FrameRate);
+			secondsPerSegment = Utils.GetClosestSnapToSecondsForTimeAxis(secondsPerSegment);
+			if (secondsPerSegment == 0) // we are zoomed in so much, but still show seconds
+				secondsPerSegment = 1;
+			// now that everything is rounded, how many segments do we really have?
+			var actualFramesPerSegment = secondsPerSegment * proj.FrameRate;
+			var actualNSegments = (int)((frameEnd - frameStart) / actualFramesPerSegment);
+			var startingSecond = (long)Math.Floor(proj.FrameToSec(frameStart));
+			
+			// compute dimensions...
+			var y1 = h - dimdim.getY_timeAxisHeight(h);
+			var y2 = h;
+
+			g.DrawLine(penGray, 0, y1, w, y1);
+			for (var i = 0; i < actualNSegments+1; i++)
+			{
+				var curSecond = startingSecond + i * secondsPerSegment;
+				var scrX = dimdim.convert_Sec2ScreenX(curSecond);
+				var ts = TimeSpan.FromSeconds(curSecond);
+				g.DrawLine(penGray, scrX, y1, scrX, y2);
+				g.DrawString(ts.ToString_MinuteOrHour(), fontDefault, brushDefault, scrX+2, y1+4);
+			}
+			if (secondsPerSegment == 1)
+			{
+				// draw frame ticks as well
+				for (var i = frameStart; i < frameEnd; i++) {
+					var scrX = dimdim.convert_Frame2ScreenX(i);
+					g.DrawLine(penGray, scrX, y1, scrX, y1+3);
+				}
+			}
 		}
 
 		public void DrawProjectVideoTimeline(
@@ -100,9 +140,14 @@ namespace Vidka.Components
 
 					if (draggy.VideoClip != vclip)
 					{
+						var brush = brushWhite;
+						if (vclip == currentVideoClip)
+							brush = brushActive;
+						else if (vclip.IsLocked)
+							brush = brushLightGray3;
 						drawVideoClip(g, vclip,
 							curFrame, y1, cliph, clipvh,
-							(vclip == currentVideoClip) ? brushActive : brushWhite,
+							brush,
 							proj, projMapping, dimdim
 							);
 					}
@@ -295,9 +340,17 @@ namespace Vidka.Components
 			int h,
 			ProjectDimensions dimdim)
 		{
+			var y2 = h - dimdim.getY_timeAxisHeight(h);
 			var markerX = dimdim.convert_Frame2ScreenX(markerFrame);
-			g.DrawLine(penMarker, markerX, 0, markerX, h);
+			g.DrawLine(penMarker, markerX, 0, markerX, y2);
 			//g.DrawString("" + markerFrame, fontDefault, brushDefault, markerX, 0);
+		}
+
+		internal void DrawCurtainForOriginalPlayback(Graphics g, int w, int h, ProjectDimensions dimdim)
+		{
+			int y1 = dimdim.getY_original2(h);
+			int y2 = h;
+			g.FillRectangle(brushHazyCurtain, 0, y1, w, y2-y1);
 		}
 
 		internal void DrawCurrentClipVideo(
@@ -308,6 +361,7 @@ namespace Vidka.Components
 			VidkaFileMapping projMapping,
 			int w, int h,
 			OutlineClipType type,
+			bool isOriginalPlaybackMode,
 			TrimDirection trimDirection,
 			int trimBracketLength,
 			long markerFrame,
@@ -318,9 +372,9 @@ namespace Vidka.Components
 			int xMain1 = dimdim.getScreenX1(vclip);
 			int xMain2 = xMain1 + dimdim.convert_FrameToAbsX(vclip.LengthFrameCalc); //hacky, I know
 			int xMainDelta = dimdim.convert_FrameToAbsX(framesActiveMouseTrim); //hacky, I know
-			int xOrig1 = (int)((float)w * vclip.FrameStart / vclip.FileLengthFrames);
-			int xOrig2 = (int)((float)w * vclip.FrameEnd / vclip.FileLengthFrames);
-			int xOrigDelta = (int)((float)w * framesActiveMouseTrim / vclip.FileLengthFrames); //hacky, I know
+			int xOrig1 = dimdim.convert_Frame2ScreenX_OriginalTimeline(vclip.FrameStart, vclip.FileLengthFrames, w);
+			int xOrig2 = dimdim.convert_Frame2ScreenX_OriginalTimeline(vclip.FrameEnd, vclip.FileLengthFrames, w);
+			int xOrigDelta = dimdim.convert_Frame2ScreenX_OriginalTimeline(framesActiveMouseTrim, vclip.FileLengthFrames, w); // hacky, I know
 			int y1 = dimdim.getY_original1(h);
 			int y2 = dimdim.getY_original2(h);
 			int yaudio = dimdim.getY_original_half(h);
@@ -351,8 +405,10 @@ namespace Vidka.Components
 			}
 
 			// draw marker on 
-			var frameOffset = markerFrame - selectedClipFrameOffset + vclip.FrameStart;
-			int xMarker = (int)((float)w * frameOffset / vclip.FileLengthFrames);
+			var frameOffset = isOriginalPlaybackMode
+				? markerFrame
+				: markerFrame - selectedClipFrameOffset + vclip.FrameStart;
+			int xMarker = dimdim.convert_Frame2ScreenX_OriginalTimeline(frameOffset, vclip.FileLengthFrames, w);
 			g.DrawLine(penMarker, xMarker, y1, xMarker, y2);
 		}
 

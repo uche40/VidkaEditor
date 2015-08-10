@@ -55,6 +55,11 @@ namespace Vidka.Core.Model
 		/// Stored in seconds, but we will only use it to convert to FileLengthFrames with proj-fps
 		/// </summary>
 		public double? FileLengthSec { get; set; }
+		/// <summary>
+		/// will not be able to trim this clip anymore, it is marked different in UI.
+		/// This helps to tell good clips from the rest of the garbage
+		/// </summary>
+		public bool IsLocked { get; set; }
 
 		// helpers
 

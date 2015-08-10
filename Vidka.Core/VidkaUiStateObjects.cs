@@ -27,6 +27,7 @@ namespace Vidka.Core
 		public TrimDirection TrimHover { get; private set; }
 		public int TrimThreshPixels { get; set; }
 		public long CurrentMarkerFrame { get; private set; }
+		public bool OriginalTimelinePlaybackMode { get; private set; }
 		public long MouseDragFrameDelta { get; private set; }
 		public EditorDraggy Draggy { get; private set; }
 		
@@ -125,6 +126,7 @@ namespace Vidka.Core
 			{
 				stateChanged = true;
 				originalTimelineSelectionChanged = true;
+				SetOriginalTimelinePlaybackMode(false);
 			}
 			CurrentVideoClip = active;
 			CurrentAudioClip = null;
@@ -143,6 +145,7 @@ namespace Vidka.Core
 			{
 				stateChanged = true;
 				originalTimelineSelectionChanged = true;
+				SetOriginalTimelinePlaybackMode(false);
 			}
 			CurrentAudioClip = active;
 			CurrentVideoClip = null;
@@ -160,6 +163,13 @@ namespace Vidka.Core
 		public void IncCurrentMarkerFrame(long frameInc)
 		{
 			SetCurrentMarkerFrame(CurrentMarkerFrame + frameInc);
+		}
+
+		public void SetOriginalTimelinePlaybackMode(bool flag)
+		{
+			if (OriginalTimelinePlaybackMode != flag)
+				stateChanged = true;
+			OriginalTimelinePlaybackMode = flag;
 		}
 
 		public void SetTrimHover(TrimDirection trimHover)
@@ -257,6 +267,7 @@ namespace Vidka.Core
 			SetCurrentMarkerFrame(0);
 			stateChanged = true;
 		}
+
 	}
 
 	public enum TrimDirection {

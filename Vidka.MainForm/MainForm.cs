@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -164,7 +166,20 @@ namespace Vidka.MainForm {
 
 		private void viewOnGithubToolStripMenuItem_Click(object sender, EventArgs e)
 		{
-			videoShitbox.cxzxc("TODO: open in browser");
+			ProcessStartInfo sInfo = new ProcessStartInfo("https://github.com/miktemk/VidkaEditor");
+			Process.Start(sInfo);
+		}
+
+		private void whereIsTheCurrentFileToolStripMenuItem_Click(object sender, EventArgs e)
+		{
+			if (logic.CurFileName == null)
+			{
+				MessageBox.Show("Are you aware you haven't even saved this project yet?", "Too much vodka?", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				return;
+			}
+
+			var folder = Path.GetDirectoryName(logic.CurFileName);
+			Process.Start(folder);
 		}
 
 		#endregion

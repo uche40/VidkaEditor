@@ -48,6 +48,7 @@
 			this.vidkaFastPreviewPlayer = new Vidka.Components.VidkaFastPreviewPlayer();
 			this.videoShitbox = new Vidka.Components.VideoShitbox();
 			this.vidkaPreviewPlayer = new Vidka.Components.VidkaPreviewPlayer();
+			this.whereIsTheCurrentFileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.menuStrip1.SuspendLayout();
 			this.SuspendLayout();
 			// 
@@ -60,7 +61,7 @@
             this.helpToolStripMenuItem});
 			this.menuStrip1.Location = new System.Drawing.Point(0, 0);
 			this.menuStrip1.Name = "menuStrip1";
-			this.menuStrip1.Size = new System.Drawing.Size(2017, 49);
+			this.menuStrip1.Size = new System.Drawing.Size(1924, 28);
 			this.menuStrip1.TabIndex = 0;
 			this.menuStrip1.Text = "menuStrip1";
 			// 
@@ -76,7 +77,7 @@
             this.toolStripSeparator2,
             this.quitToolStripMenuItem});
 			this.fileToolStripMenuItem.Name = "fileToolStripMenuItem";
-			this.fileToolStripMenuItem.Size = new System.Drawing.Size(75, 45);
+			this.fileToolStripMenuItem.Size = new System.Drawing.Size(44, 24);
 			this.fileToolStripMenuItem.Text = "File";
 			// 
 			// newToolStripMenuItem
@@ -84,7 +85,7 @@
 			this.newToolStripMenuItem.Name = "newToolStripMenuItem";
 			this.newToolStripMenuItem.ShortcutKeyDisplayString = "Ctrl+N";
 			this.newToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.N)));
-			this.newToolStripMenuItem.Size = new System.Drawing.Size(478, 46);
+			this.newToolStripMenuItem.Size = new System.Drawing.Size(270, 24);
 			this.newToolStripMenuItem.Text = "New";
 			this.newToolStripMenuItem.Click += new System.EventHandler(this.newToolStripMenuItem_Click);
 			// 
@@ -93,7 +94,7 @@
 			this.openToolStripMenuItem.Name = "openToolStripMenuItem";
 			this.openToolStripMenuItem.ShortcutKeyDisplayString = "Ctrl+O";
 			this.openToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.O)));
-			this.openToolStripMenuItem.Size = new System.Drawing.Size(478, 46);
+			this.openToolStripMenuItem.Size = new System.Drawing.Size(270, 24);
 			this.openToolStripMenuItem.Text = "Open";
 			this.openToolStripMenuItem.Click += new System.EventHandler(this.openToolStripMenuItem_Click);
 			// 
@@ -102,7 +103,7 @@
 			this.saveToolStripMenuItem.Name = "saveToolStripMenuItem";
 			this.saveToolStripMenuItem.ShortcutKeyDisplayString = "Ctrl+S";
 			this.saveToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.S)));
-			this.saveToolStripMenuItem.Size = new System.Drawing.Size(478, 46);
+			this.saveToolStripMenuItem.Size = new System.Drawing.Size(270, 24);
 			this.saveToolStripMenuItem.Text = "Save";
 			this.saveToolStripMenuItem.Click += new System.EventHandler(this.saveToolStripMenuItem_Click);
 			// 
@@ -111,14 +112,14 @@
 			this.saveAsToolStripMenuItem.Name = "saveAsToolStripMenuItem";
 			this.saveAsToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)(((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Shift) 
             | System.Windows.Forms.Keys.S)));
-			this.saveAsToolStripMenuItem.Size = new System.Drawing.Size(478, 46);
+			this.saveAsToolStripMenuItem.Size = new System.Drawing.Size(270, 24);
 			this.saveAsToolStripMenuItem.Text = "Save As";
 			this.saveAsToolStripMenuItem.Click += new System.EventHandler(this.saveAsToolStripMenuItem_Click);
 			// 
 			// toolStripSeparator1
 			// 
 			this.toolStripSeparator1.Name = "toolStripSeparator1";
-			this.toolStripSeparator1.Size = new System.Drawing.Size(475, 6);
+			this.toolStripSeparator1.Size = new System.Drawing.Size(267, 6);
 			// 
 			// exportToVideoToolStripMenuItem
 			// 
@@ -126,19 +127,19 @@
 			this.exportToVideoToolStripMenuItem.ShortcutKeyDisplayString = "Ctrl+Shift+E";
 			this.exportToVideoToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)(((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Shift) 
             | System.Windows.Forms.Keys.E)));
-			this.exportToVideoToolStripMenuItem.Size = new System.Drawing.Size(478, 46);
+			this.exportToVideoToolStripMenuItem.Size = new System.Drawing.Size(270, 24);
 			this.exportToVideoToolStripMenuItem.Text = "Export to video";
 			this.exportToVideoToolStripMenuItem.Click += new System.EventHandler(this.exportToVideoToolStripMenuItem_Click);
 			// 
 			// toolStripSeparator2
 			// 
 			this.toolStripSeparator2.Name = "toolStripSeparator2";
-			this.toolStripSeparator2.Size = new System.Drawing.Size(475, 6);
+			this.toolStripSeparator2.Size = new System.Drawing.Size(267, 6);
 			// 
 			// quitToolStripMenuItem
 			// 
 			this.quitToolStripMenuItem.Name = "quitToolStripMenuItem";
-			this.quitToolStripMenuItem.Size = new System.Drawing.Size(478, 46);
+			this.quitToolStripMenuItem.Size = new System.Drawing.Size(270, 24);
 			this.quitToolStripMenuItem.Text = "Quit";
 			this.quitToolStripMenuItem.Click += new System.EventHandler(this.quitToolStripMenuItem_Click);
 			// 
@@ -148,14 +149,14 @@
             this.toggleConsoleToolStripMenuItem,
             this.toggleFastModeToolStripMenuItem});
 			this.viewToolStripMenuItem.Name = "viewToolStripMenuItem";
-			this.viewToolStripMenuItem.Size = new System.Drawing.Size(94, 45);
+			this.viewToolStripMenuItem.Size = new System.Drawing.Size(53, 24);
 			this.viewToolStripMenuItem.Text = "View";
 			// 
 			// toggleConsoleToolStripMenuItem
 			// 
 			this.toggleConsoleToolStripMenuItem.Name = "toggleConsoleToolStripMenuItem";
 			this.toggleConsoleToolStripMenuItem.ShortcutKeyDisplayString = "O";
-			this.toggleConsoleToolStripMenuItem.Size = new System.Drawing.Size(395, 46);
+			this.toggleConsoleToolStripMenuItem.Size = new System.Drawing.Size(227, 24);
 			this.toggleConsoleToolStripMenuItem.Text = "Toggle Console";
 			this.toggleConsoleToolStripMenuItem.Click += new System.EventHandler(this.toggleConsoleToolStripMenuItem_Click);
 			// 
@@ -163,22 +164,23 @@
 			// 
 			this.toggleFastModeToolStripMenuItem.Name = "toggleFastModeToolStripMenuItem";
 			this.toggleFastModeToolStripMenuItem.ShortcutKeyDisplayString = "P";
-			this.toggleFastModeToolStripMenuItem.Size = new System.Drawing.Size(395, 46);
+			this.toggleFastModeToolStripMenuItem.Size = new System.Drawing.Size(227, 24);
 			this.toggleFastModeToolStripMenuItem.Text = "Toggle Fast Preview";
 			this.toggleFastModeToolStripMenuItem.Click += new System.EventHandler(this.toggleFastModeToolStripMenuItem_Click);
 			// 
 			// helpToolStripMenuItem
 			// 
 			this.helpToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.viewOnGithubToolStripMenuItem});
+            this.viewOnGithubToolStripMenuItem,
+            this.whereIsTheCurrentFileToolStripMenuItem});
 			this.helpToolStripMenuItem.Name = "helpToolStripMenuItem";
-			this.helpToolStripMenuItem.Size = new System.Drawing.Size(92, 45);
+			this.helpToolStripMenuItem.Size = new System.Drawing.Size(53, 24);
 			this.helpToolStripMenuItem.Text = "Help";
 			// 
 			// viewOnGithubToolStripMenuItem
 			// 
 			this.viewOnGithubToolStripMenuItem.Name = "viewOnGithubToolStripMenuItem";
-			this.viewOnGithubToolStripMenuItem.Size = new System.Drawing.Size(301, 46);
+			this.viewOnGithubToolStripMenuItem.Size = new System.Drawing.Size(242, 24);
 			this.viewOnGithubToolStripMenuItem.Text = "View on Github";
 			this.viewOnGithubToolStripMenuItem.Click += new System.EventHandler(this.viewOnGithubToolStripMenuItem_Click);
 			// 
@@ -215,13 +217,21 @@
 			// vidkaPreviewPlayer
 			// 
 			this.vidkaPreviewPlayer.Location = new System.Drawing.Point(1352, 102);
+			this.vidkaPreviewPlayer.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
 			this.vidkaPreviewPlayer.Name = "vidkaPreviewPlayer";
 			this.vidkaPreviewPlayer.Size = new System.Drawing.Size(634, 417);
 			this.vidkaPreviewPlayer.TabIndex = 1;
 			// 
+			// whereIsTheCurrentFileToolStripMenuItem
+			// 
+			this.whereIsTheCurrentFileToolStripMenuItem.Name = "whereIsTheCurrentFileToolStripMenuItem";
+			this.whereIsTheCurrentFileToolStripMenuItem.Size = new System.Drawing.Size(242, 24);
+			this.whereIsTheCurrentFileToolStripMenuItem.Text = "Where is the current file?";
+			this.whereIsTheCurrentFileToolStripMenuItem.Click += new System.EventHandler(this.whereIsTheCurrentFileToolStripMenuItem_Click);
+			// 
 			// MainForm
 			// 
-			this.ClientSize = new System.Drawing.Size(2017, 1098);
+			this.ClientSize = new System.Drawing.Size(1924, 1055);
 			this.Controls.Add(this.vidkaFastPreviewPlayer);
 			this.Controls.Add(this.txtConsole);
 			this.Controls.Add(this.videoShitbox);
@@ -261,6 +271,7 @@
 		private System.Windows.Forms.ToolStripMenuItem toggleFastModeToolStripMenuItem;
 		private System.Windows.Forms.ToolStripMenuItem helpToolStripMenuItem;
 		private System.Windows.Forms.ToolStripMenuItem viewOnGithubToolStripMenuItem;
+		private System.Windows.Forms.ToolStripMenuItem whereIsTheCurrentFileToolStripMenuItem;
 	}
 }
 

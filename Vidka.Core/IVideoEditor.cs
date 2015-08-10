@@ -30,12 +30,12 @@ namespace Vidka.Core
 		void UpdateCanvasHorizontalScroll(int scrollX);
 		string OpenProjectSaveDialog();
 		string OpenProjectOpenDialog();
+		void ShowErrorMessage(string title, string message);
 		void AskTo_PleaseSetPlayerAbsPosition(PreviewPlayerAbsoluteLocation location);
 		void AskTo_PleaseSetFormTitle(string title);
 		
 		//TODO: change
 		//void PlayTest(string filename);
-
 
 	}
 }

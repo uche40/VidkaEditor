@@ -119,8 +119,12 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>xcopy "$(TargetDir)*.exe" "$(SolutionDir)$bin\" /Y
+
 xcopy "$(TargetDir)*.dll" "$(SolutionDir)$bin\" /Y
+
 xcopy "$(TargetDir)*.config" "$(SolutionDir)$bin\" /Y
+
+xcopy "$(TargetDir)App_Data" "$(SolutionDir)$bin\App_Data" /I /E /Y
 del "$(SolutionDir)$bin\*vshost*"</PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

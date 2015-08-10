@@ -186,7 +186,14 @@ namespace Vidka.Components {
 				Logic.Redo();
 			else if (e.KeyCode == Keys.S)
 				Logic.SplitCurClipVideo();
-			//else if (e.Control && e.KeyCode == Keys.G) {
+			else if (e.KeyCode == Keys.A)
+				Logic.SplitCurClipVideo_DeleteLeft();
+			else if (e.KeyCode == Keys.D)
+				Logic.SplitCurClipVideo_DeleteRight();
+			else if (e.KeyCode == Keys.F)
+				Logic.ToggleLockOnCurSelectedClip();
+			else if (e.KeyCode == Keys.Delete)
+				Logic.DeleteCurSelectedClip();
 			else if (e.KeyCode == Keys.P) {
 				if (PleaseTogglePreviewMode != null)
 					PleaseTogglePreviewMode();
@@ -195,12 +202,6 @@ namespace Vidka.Components {
 				if (PleaseToggleConsoleVisibility != null)
 					PleaseToggleConsoleVisibility();
 			}
-			else if (e.KeyCode == Keys.A)
-				Logic.SplitCurClipVideo_DeleteLeft();
-			else if (e.KeyCode == Keys.D)
-				Logic.SplitCurClipVideo_DeleteRight();
-			else if (e.KeyCode == Keys.Delete)
-				Logic.DeleteCurSelectedClip();
 		}
 
 		protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -323,6 +324,12 @@ namespace Vidka.Components {
 				PleaseSetFormTitle(title);
 		}
 
+		public void ShowErrorMessage(string title, string message)
+		{
+			MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+		}
+
+
 		#endregion
 
 		#region ================================ object exchange ================================
@@ -356,6 +363,8 @@ namespace Vidka.Components {
 
 			//prepare canvas: paint strips for timelines, etc
 			drawOps.PrepareCanvas(e.Graphics, Logic.Dimdim, Width, Height, Logic.UiObjects.TimelineHover);
+
+			drawOps.DrawTimeAxis(e.Graphics, Logic.Dimdim, Width, Height, Logic.Proj);
 
 			// TODO: buffer an off-screen image of the entire project
 			drawOps.DrawProjectVideoTimeline(
@@ -393,11 +402,20 @@ namespace Vidka.Components {
 			//		Height,
 			//		OutlineClipType.Hover);
 
-			drawOps.DrawCurrentFrameMarker(
-				e.Graphics,
-				Logic.UiObjects.CurrentMarkerFrame,
-				Height,
-				Logic.Dimdim);
+			if (Logic.UiObjects.OriginalTimelinePlaybackMode) {
+				drawOps.DrawCurtainForOriginalPlayback(
+					e.Graphics,
+					Width,
+					Height,
+					Logic.Dimdim);
+			}
+			else {
+				drawOps.DrawCurrentFrameMarker(
+					e.Graphics,
+					Logic.UiObjects.CurrentMarkerFrame,
+					Height,
+					Logic.Dimdim);
+			}
 
 			if (Logic.UiObjects.CurrentVideoClip != null) {
 				drawOps.DrawCurrentClipVideo(
@@ -410,6 +428,7 @@ namespace Vidka.Components {
 					(Logic.UiObjects.CurrentVideoClip == Logic.UiObjects.CurrentVideoClipHover)
 						? OutlineClipType.Hover
 						: OutlineClipType.Active,
+					Logic.UiObjects.OriginalTimelinePlaybackMode,
 					Logic.UiObjects.TrimHover,
 					Logic.UiObjects.TrimThreshPixels,
 					Logic.UiObjects.CurrentMarkerFrame,
