@@ -70,8 +70,10 @@ namespace Vidka.Components
 		}
 
 		public void PlayVideoClip(string filename, double clipSecStart, double clipSecEnd) {
+			Ctlcontrols2.pause();
 			CurMode = VidkaPreviewPlayerMode.SequentialPlayback;
 			curClipSecEnd = clipSecEnd;
+			MediaPlayer.URL = null;
 			MediaPlayer.URL = curUrl = filename;
 			Ctlcontrols2.currentPosition = clipSecStart;
 			Ctlcontrols2.play();
@@ -90,7 +92,8 @@ namespace Vidka.Components
 
 		private void MediaPlayer_PlayStateChange(object sender, AxWMPLib._WMPOCXEvents_PlayStateChangeEvent e)
 		{
-			if (e.newState == 3) // playing
+			var state = (WMPLib.WMPPlayState)e.newState;
+			if (state == WMPLib.WMPPlayState.wmppsPlaying) // = 3
 			{
 				if (CurMode == VidkaPreviewPlayerMode.StillFrame)
 				{
@@ -108,6 +111,8 @@ namespace Vidka.Components
 					}
 				}
 			}
+
+			//VideoShitbox.ConsoleSingleton.cxzxc("newState:" + e.newState);
 
 			//if ((WMPLib.WMPPlayState)e.newState == WMPLib.WMPPlayState.wmppsStopped)
 			//{

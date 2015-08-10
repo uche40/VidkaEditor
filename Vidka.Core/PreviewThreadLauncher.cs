@@ -82,7 +82,6 @@ namespace Vidka.Core
 				editor.SetFrameMarker_ForceRepaint(frameMarkerPosition);
 				if (secCurClip >= mutex.CurStopPositionSec - STOP_BEFORE_THRESH || player.IsStopped())
 				{
-					player.StopWhateverYouArePlaying();
 					mutex.CurClipIndex++;
 					var clip = mutex.Proj.GetVideoClipAtIndex(mutex.CurClipIndex);
 					if (clip == null)

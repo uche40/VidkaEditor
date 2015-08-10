@@ -491,7 +491,7 @@ namespace Vidka.Core
 		/// <summary>
 		/// Call this in ALL spots where proj length is subject to change
 		/// </summary>
-		private void UpdateCanvasWidthFromProjAndDimdim() {
+		public void UpdateCanvasWidthFromProjAndDimdim() {
 			var widthNeedsToBeSet = Dimdim.getTotalWidthPixelsForceRecalc();
 			___Ui_updateCanvasWidth(widthNeedsToBeSet);
 		}
@@ -776,7 +776,7 @@ namespace Vidka.Core
 				});
 
 				// update current frame marker on left click press
-				if (button == MouseButtons.Left)
+				if (button == MouseButtons.Left && !previewLauncher.IsPlaying)
 				{
 					if (timeline == ProjectDimensionsTimelineType.Original && UiObjects.CurrentClip != null)
 					{
@@ -1005,6 +1005,11 @@ namespace Vidka.Core
 				cxzxc("On the seam... Cannot split!");
 				return false;
 			}
+			if (clip.IsLocked)
+			{
+				cxzxc("Clip locked... Cannot split!\nPress 'F' to unlock.");
+				return false;
+			}
 			return true;
 		}
 
@@ -1069,12 +1074,12 @@ namespace Vidka.Core
 			{
 				Redo = () =>
 				{
-					cxzxc("lock clip");
+					cxzxc((newValue ? "lock": "unlock") + " clip");
 					clip.IsLocked = newValue;
 				},
 				Undo = () =>
 				{
-					cxzxc("UNDO lock clip");
+					cxzxc("UNDO " + (newValue ? "lock" : "unlock") + " clip");
 					clip.IsLocked = oldValue;
 				},
 			});

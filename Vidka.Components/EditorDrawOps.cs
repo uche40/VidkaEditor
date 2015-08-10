@@ -40,6 +40,7 @@ namespace Vidka.Components
 		private Brush brushLightGray2 = new SolidBrush(Color.FromArgb(unchecked((int)0xFFf5f5f5)));
 		private Brush brushLightGray3 = new SolidBrush(Color.FromArgb(unchecked((int)0xFFeeeeee)));
 		private Brush brushActive = new SolidBrush(Color.LightBlue);
+		private Brush brushLockedClip = new SolidBrush(Color.Beige);
 		private Brush brushWhite = new SolidBrush(Color.White);
 		private Brush brushHazy = new SolidBrush(Color.FromArgb(200, 230, 230, 230));
 		private Brush brushHazyCurtain = new SolidBrush(Color.FromArgb(200, 230, 230, 230)); //new SolidBrush(Color.FromArgb(200, 180, 180, 180));
@@ -144,7 +145,7 @@ namespace Vidka.Components
 						if (vclip == currentVideoClip)
 							brush = brushActive;
 						else if (vclip.IsLocked)
-							brush = brushLightGray3;
+							brush = brushLockedClip;
 						drawVideoClip(g, vclip,
 							curFrame, y1, cliph, clipvh,
 							brush,

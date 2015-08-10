@@ -83,18 +83,26 @@ namespace Vidka.Core
 				var newClip = copyMode ? clip.MakeCopy() : null;
 				iEditor.AddUndableAction_andFireRedo(new UndoableAction()
 				{
-					Redo = () => {
+					Redo = () =>
+					{
 						cxzxc("copy: " + clip_oldIndex + "->" + draggyVideoShoveIndex);
 						proj.ClipsVideo.Insert(draggyVideoShoveIndex, newClip);
 						uiObjects.SetActiveVideo(newClip, proj);
+						// update width and marker on new clip
+						iEditor.UpdateCanvasWidthFromProjAndDimdim();
 						long frameMarker = proj.GetVideoClipAbsFramePositionLeft(newClip);
 						iEditor.SetFrameMarker_ShowFrameInPlayer(frameMarker);
 					},
-					Undo = () => {
+					Undo = () =>
+					{
 						cxzxc("UNDO copy");
 						proj.ClipsVideo.Remove(newClip);
-						uiObjects.SetActiveVideo(null, proj);
-					}
+						uiObjects.SetActiveVideo(clip, proj);
+						// update width and marker on old clip
+						iEditor.UpdateCanvasWidthFromProjAndDimdim();
+						long frameMarker = proj.GetVideoClipAbsFramePositionLeft(clip);
+						iEditor.SetFrameMarker_ShowFrameInPlayer(frameMarker);
+					},
 				});
 			}
 			else

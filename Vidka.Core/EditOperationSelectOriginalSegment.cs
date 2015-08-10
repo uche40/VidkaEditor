@@ -91,6 +91,7 @@ namespace Vidka.Core
 					},
 					PostAction = () =>
 					{
+						iEditor.UpdateCanvasWidthFromProjAndDimdim();
 						long frameMarker = proj.GetVideoClipAbsFramePositionLeft(clip);
 						iEditor.SetFrameMarker_ShowFrameInPlayer(frameMarker);
 					}

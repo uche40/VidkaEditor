@@ -38,6 +38,7 @@ namespace Vidka.Core
 			return (button == MouseButtons.Left)
 				&& (uiObjects.TimelineHover == timeline)
 				&& (uiObjects.CurrentVideoClipHover != null)
+				&& (!uiObjects.CurrentVideoClipHover.IsLocked)
 				&& (uiObjects.TrimHover == side);
 		}
 
@@ -92,6 +93,7 @@ namespace Vidka.Core
 							clip.FrameEnd -= deltaConstrained;
 					},
 					PostAction = () => {
+						iEditor.UpdateCanvasWidthFromProjAndDimdim();
 						if (side == TrimDirection.Left)
 							iEditor.SetFrameMarker_LeftOfVClip(clip, proj);
 						else if (side == TrimDirection.Right)
