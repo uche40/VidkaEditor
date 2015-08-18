@@ -11,8 +11,10 @@ namespace Vidka.Core
 		void ShowFrameInVideoPlayer(long frame);
 		long SetFrameMarker_ShowFrameInPlayer(long frame);
 		void SetFrameMarker_ForceRepaint(long frame);
+		void SetCurrentVideoClip_ForceRepaint(Model.VidkaClipVideo clip);
 		void UpdateCanvasWidthFromProjAndDimdim();
 		void AppendToConsole(VidkaConsoleLogLevel vidkaConsoleLogLevel, string p);
 		void cxzxc(string text);
+
 	}
 }

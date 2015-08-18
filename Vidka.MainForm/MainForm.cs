@@ -162,6 +162,20 @@ namespace Vidka.MainForm {
 
 		#endregion
 
+		#region ...Ops...
+
+		private void deleteAllNonlockedClipsToolStripMenuItem_Click(object sender, EventArgs e)
+		{
+			logic.deleteAllNonlockedClips();
+		}
+
+		private void linearShuffleToolStripMenuItem_Click(object sender, EventArgs e)
+		{
+			logic.linearShiffleByFilename();
+		}
+
+		#endregion
+		
 		#region ...Help...
 
 		private void viewOnGithubToolStripMenuItem_Click(object sender, EventArgs e)

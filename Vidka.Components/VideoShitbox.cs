@@ -176,6 +176,8 @@ namespace Vidka.Components {
 				Logic.PreviewAvsSegmentInMplayer(false);
 			else if (e.KeyCode == Keys.Home)
 				Logic.SetFrameMarker_0_ForceRepaint();
+			else if (e.KeyCode == Keys.End)
+				Logic.SetFrameMarker_End_ForceRepaint();
 			else if (e.KeyCode == Keys.Enter)
 				Logic.EnterPressed();
 			else if (e.KeyCode == Keys.Escape)
@@ -185,13 +187,17 @@ namespace Vidka.Components {
 			else if (e.Control && e.KeyCode == Keys.Y)
 				Logic.Redo();
 			else if (e.KeyCode == Keys.S)
-				Logic.SplitCurClipVideo();
+				Logic.SplitCurClipVideo(false);
+			else if (e.KeyCode == Keys.L)
+				Logic.SplitCurClipVideo(true);
 			else if (e.KeyCode == Keys.A)
 				Logic.SplitCurClipVideo_DeleteLeft();
 			else if (e.KeyCode == Keys.D)
 				Logic.SplitCurClipVideo_DeleteRight();
 			else if (e.KeyCode == Keys.F)
-				Logic.ToggleLockOnCurSelectedClip();
+				Logic.ToggleCurSelectedClip_IsLocked();
+			else if (e.KeyCode == Keys.M)
+				Logic.ToggleCurSelectedClip_IsMuted();
 			else if (e.KeyCode == Keys.Delete)
 				Logic.DeleteCurSelectedClip();
 			else if (e.KeyCode == Keys.P) {

@@ -22,10 +22,10 @@ namespace Vidka.Components
 
 		private const int MAX_ThumbsBeforeCleanseUnused = 1; //200;
 
-		private Dictionary<string, Bitmap> thumbsCache;
-		private Dictionary<string, Bitmap> wavesCache;
-		private List<string> thumbsNotUsed;
-		private Dictionary<string, List<int>> requests;
+		private Dictionary<string, Bitmap> imgCache;
+		private List<string> imgNotUsed;
+		private Dictionary<string, List<int>> requests_thumb;
+		private Dictionary<string, bool> requests_other;
 		private TaskQueueInOtherThread taskThread;
 		private Bitmap nullThumb;
 		private Bitmap nullWave;
@@ -35,10 +35,10 @@ namespace Vidka.Components
 
 		public ImageCacheManager()
 		{
-			thumbsCache = new Dictionary<string, Bitmap>();
-			wavesCache = new Dictionary<string, Bitmap>();
-			thumbsNotUsed = new List<string>();
-			requests = new Dictionary<string, List<int>>();
+			imgCache = new Dictionary<string, Bitmap>();
+			imgNotUsed = new List<string>();
+			requests_thumb = new Dictionary<string, List<int>>();
+			requests_other = new Dictionary<string, bool>();
 			taskThread = new TaskQueueInOtherThread();
 			nullThumb = makeSolidColorBitmap(ThumbnailTest.ThumbW, ThumbnailTest.ThumbH, Color.Gray);
 			nullWave = makeSolidColorBitmap(5, 1, Color.White);
@@ -55,19 +55,31 @@ namespace Vidka.Components
 
 		public Bitmap getThumb(string filename, int index)
 		{
-			var url = getUrl(filename, index);
-			if (thumbsCache.ContainsKey(url))
+			var url = getUrl_thumb(filename, index);
+			if (imgCache.ContainsKey(url))
 			{
-				thumbsNotUsed.Remove(url);
-				return thumbsCache[url];
+				imgNotUsed.Remove(url);
+				return imgCache[url];
 			}
 			// otherwise we need to queue it to the search
-			addRequest(filename, index);
+			if (requests_thumb.ContainsKey(filename))
+				requests_thumb[filename].AddUnique(index);
+			else
+				requests_thumb.Add(filename, new List<int> { index });
 			return nullThumb;
 		}
 
 		public Bitmap getWaveImg(string filename)
 		{
+			var url = filename;
+			if (imgCache.ContainsKey(url))
+			{
+				imgNotUsed.Remove(url);
+				return imgCache[url];
+			}
+			// otherwise we need to queue it to the search
+			if (!requests_other.ContainsKey(url))
+				requests_other.Add(url, true);
 			return nullWave;
 		}
 
@@ -76,7 +88,7 @@ namespace Vidka.Components
 			cxzxc("___paintBegin");
 			if (removeUnusedOnNextRepaint)
 			{
-				thumbsNotUsed.AddRange(thumbsCache.Keys);
+				imgNotUsed.AddRange(imgCache.Keys);
 				removeUnusedOnNextRepaint = false;
 			}
 		}
@@ -85,22 +97,22 @@ namespace Vidka.Components
 		{
 			// remove images we are no longer using
 			cxzxc("___paintEnd");
-			cxzxc("to-remove:" + thumbsNotUsed.Select(x => debug_urlIndex(x)).StringJoin(","));
-			foreach (var notUsed in thumbsNotUsed)
+			cxzxc("to-remove:" + imgNotUsed.Select(x => debug_urlIndex(x)).StringJoin(","));
+			foreach (var notUsed in imgNotUsed)
 			{
-				cxzxc("removing " + debug_url(notUsed));
+				cxzxc("removing " + debug_url_thumb(notUsed));
 				//if (!thumbsCache.ContainsKey(notUsed))
 				//	continue;
-				var img = thumbsCache[notUsed];
-				thumbsCache.Remove(notUsed);
+				var img = imgCache[notUsed];
+				imgCache.Remove(notUsed);
 				img.Dispose();
 			}
-			thumbsNotUsed.Clear();
-			cxzxc("to-add:" + requests.SelectMany(x => x.Value.Select(y => ""+y)).StringJoin(","));
+			imgNotUsed.Clear();
+			cxzxc("to-add:" + requests_thumb.SelectMany(x => x.Value.Select(y => ""+y)).StringJoin(","));
 			// start loading any new images which we require
-			foreach (var filename in requests.Keys)
+			foreach (var filename in requests_thumb.Keys)
 			{
-				var indices = requests[filename];
+				var indices = requests_thumb[filename];
 				taskThread.QueueThisUpPlease(() =>
 				{
 					if (!File.Exists(filename))
@@ -110,8 +122,8 @@ namespace Vidka.Components
 					var nCol = thumbsAll.Height / ThumbnailTest.ThumbH;
 					foreach (var index in indices)
 					{
-						var url = getUrl(filename, index);
-						if (thumbsCache.ContainsKey(url))
+						var url = getUrl_thumb(filename, index);
+						if (imgCache.ContainsKey(url))
 							continue;
 						Bitmap target = new Bitmap(ThumbnailTest.ThumbW, ThumbnailTest.ThumbH);
 						rectCrop.X = ThumbnailTest.ThumbW * (index % nCol);
@@ -120,9 +132,9 @@ namespace Vidka.Components
 						rectCrop.Height = ThumbnailTest.ThumbH;
 						using (Graphics g = Graphics.FromImage(target))
 							g.DrawImage(thumbsAll, rectThumb, rectCrop, GraphicsUnit.Pixel);
-						cxzxc("adding " + debug_url(url));
-						thumbsCache.Add(url, target);
-						if (thumbsCache.Count > MAX_ThumbsBeforeCleanseUnused)
+						cxzxc("adding " + debug_url_thumb(url));
+						imgCache.Add(url, target);
+						if (imgCache.Count > MAX_ThumbsBeforeCleanseUnused)
 							removeUnusedOnNextRepaint = true;
 						// remove from requests
 						//requests[filename].Remove(index);
@@ -131,7 +143,24 @@ namespace Vidka.Components
 					}
 				});
 			}
-			requests.Clear();
+			requests_thumb.Clear();
+			foreach (var filename in requests_other.Keys)
+			{
+				var url = filename;
+				taskThread.QueueThisUpPlease(() =>
+				{
+					if (imgCache.ContainsKey(url))
+						return;
+					if (!File.Exists(filename))
+						return;
+					Bitmap bmp = System.Drawing.Image.FromFile(filename, true) as Bitmap;
+					cxzxc("adding " + debug_url_other(url));
+					imgCache.Add(url, bmp);
+					if (imgCache.Count > MAX_ThumbsBeforeCleanseUnused)
+						removeUnusedOnNextRepaint = true;
+				});
+			}
+			requests_other.Clear();
 		}
 
 		//#region ----------------------- concurrent ops --------------------------
@@ -140,17 +169,9 @@ namespace Vidka.Components
 
 		#region ----------------------- helpers --------------------------
 
-		private string getUrl(string filename, int index)
+		private string getUrl_thumb(string filename, int index)
 		{
 			return filename + ":" + index;
-		}
-
-		private void addRequest(string filename, int index)
-		{
-			if (requests.ContainsKey(filename))
-				requests[filename].AddUnique(index);
-			else
-				requests.Add(filename, new List<int> { index });
 		}
 
 		private Bitmap makeSolidColorBitmap(int w, int h, Color color)
@@ -168,9 +189,13 @@ namespace Vidka.Components
 			return index;
 		}
 
-		private string debug_url(string url) {
+		private string debug_url_thumb(string url) {
 			var index = debug_urlIndex(url);
 			return Path.GetFileName(url.Replace(":" + index, "")) + ':' + index;
+		}
+
+		private string debug_url_other(string url) {
+			return Path.GetFileName(url);
 		}
 
 		private void cxzxc(string message) {

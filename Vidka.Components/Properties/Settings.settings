@@ -3,7 +3,7 @@
   <Profiles />
   <Settings>
     <Setting Name="MinnimumTimelineSegmentSizeInPixels" Type="System.Int32" Scope="Application">
-      <Value Profile="(Default)">100</Value>
+      <Value Profile="(Default)">200</Value>
     </Setting>
   </Settings>
 </SettingsFile>

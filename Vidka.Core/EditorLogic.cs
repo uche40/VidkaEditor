@@ -512,7 +512,8 @@ namespace Vidka.Core
 		/// <summary>
 		/// Used during playback for animation of the marker (or cursor, if u like...)
 		/// </summary>
-		public void SetFrameMarker_ForceRepaint(long frame) {
+		public void SetFrameMarker_ForceRepaint(long frame)
+		{
 			___UiTransactionBegin();
 			UiObjects.SetCurrentMarkerFrame(frame);
 			updateFrameOfViewFromMarker();
@@ -526,6 +527,14 @@ namespace Vidka.Core
 		{
 			___UiTransactionBegin();
 			SetFrameMarker_ShowFrameInPlayer(0);
+			___UiTransactionEnd();
+		}
+
+		public void SetFrameMarker_End_ForceRepaint()
+		{
+			___UiTransactionBegin();
+			var frameLastClip = Proj.GetTotalLengthOfVideoClipsFrame();
+			SetFrameMarker_ShowFrameInPlayer(frameLastClip);
 			___UiTransactionEnd();
 		}
 
@@ -598,10 +607,10 @@ namespace Vidka.Core
 				var framesToStartOfClip = frameOffset - clip.FrameStart;
 				if (keyData == (Keys.Control | Keys.Left))
 				{
-					if (framesToStartOfClip > 0) // special case: go to beginning of this clip
-						return SetFrameMarker_ShowFrameInPlayer(UiObjects.CurrentMarkerFrame - framesToStartOfClip);
 					frameOffset = 0;
-					if (curClipIndex > 0)
+					if (framesToStartOfClip > 0) // special case: go to beginning of this clip
+						clip = Proj.ClipsVideo[curClipIndex];
+					else if (curClipIndex > 0)
 						clip = Proj.ClipsVideo[curClipIndex-1];
 				}
 				else if (keyData == (Keys.Control | Keys.Right))
@@ -623,6 +632,14 @@ namespace Vidka.Core
 			if (frameDelta != 0)
 				SetFrameMarker_ShowFrameInPlayer(UiObjects.CurrentMarkerFrame + frameDelta);
 			return 0;
+		}
+
+		public void SetCurrentVideoClip_ForceRepaint(VidkaClipVideo clip)
+		{
+			___UiTransactionBegin();
+			UiObjects.SetActiveVideo(clip, Proj);
+			UiObjects.SetHoverVideo(null);
+			___UiTransactionEnd();
 		}
 
 		#endregion
@@ -692,6 +709,12 @@ namespace Vidka.Core
 		{
 			if (!redoStack.Any())
 				return;
+			if (previewLauncher.IsPlaying)
+			{
+				cxzxc("Undo/redo disabled during playback to avoid whoopsie-doodles!");
+				return;
+			}
+
 			var action = redoStack.Pop();
 			undoStack.Push(action);
 
@@ -707,6 +730,12 @@ namespace Vidka.Core
 		{
 			if (!undoStack.Any())
 				return;
+			if (previewLauncher.IsPlaying)
+			{
+				cxzxc("Undo/redo disabled during playback to avoid whoopsie-doodles!");
+				return;
+			}
+
 			var action = undoStack.Pop();
 			redoStack.Push(action);
 
@@ -786,7 +815,7 @@ namespace Vidka.Core
 							cursorFrame = 0;
 						if (cursorFrame >= clip.FrameStart && cursorFrame < clip.FrameEnd) {
 							UiObjects.SetOriginalTimelinePlaybackMode(false);
-							SetFrameMarker_ShowFrameInPlayer(cursorFrame - (UiObjects.CurrentClipFrameAbsPos ?? 0) - UiObjects.CurrentClip.FrameStart);
+							SetFrameMarker_ShowFrameInPlayer(cursorFrame + (UiObjects.CurrentClipFrameAbsPos ?? 0) - UiObjects.CurrentClip.FrameStart);
 						}
 						else {
 							// we are outside the clip bounds on the original timeline,
@@ -902,7 +931,7 @@ namespace Vidka.Core
 
 		#region ---------------------- split clips -----------------------------
 
-		public void SplitCurClipVideo()
+		public void SplitCurClipVideo(bool markLocked)
 		{
 			VidkaClipVideo clip;
 			int clipIndex = 0;
@@ -925,8 +954,15 @@ namespace Vidka.Core
 					cxzxc("split: location=" + frameOffsetStartOfVideo);
 					Proj.ClipsVideo.Insert(clipIndex, clipNewOnTheLeft);
 					clip.FrameStart = frameOffsetStartOfVideo;
+				},
+				PostAction = () => {
+					UiObjects.SetActiveVideo(clip, Proj); // to reset CurrentClipFrameAbsPos
 				}
 			});
+			if (markLocked)
+				clipNewOnTheLeft.IsLocked = true;
+			if (previewLauncher.IsPlaying)
+				previewLauncher.SplitPerformedIncrementClipIndex();
 		}
 
 		public void SplitCurClipVideo_DeleteLeft()
@@ -951,7 +987,11 @@ namespace Vidka.Core
 					clip.FrameStart = frameOffsetStartOfVideo;
 					UpdateCanvasWidthFromProjAndDimdim();
 				},
-				//PostAction = () => {} // marker stays where it is...
+				PostAction = () =>
+				{
+					UiObjects.SetActiveVideo(clip, Proj); // to reset CurrentClipFrameAbsPos
+					//NOCODE: marker stays where it is...
+				}
 			});
 		}
 
@@ -1063,7 +1103,7 @@ namespace Vidka.Core
 			}
 		}
 
-		public void ToggleLockOnCurSelectedClip()
+		public void ToggleCurSelectedClip_IsLocked()
 		{
 			if (UiObjects.CurrentClip == null)
 				return;
@@ -1085,6 +1125,90 @@ namespace Vidka.Core
 			});
 		}
 
+		public void ToggleCurSelectedClip_IsMuted()
+		{
+			if (UiObjects.CurrentVideoClip == null && UiObjects.CurrentAudioClip != null) {
+				cxzxc("Does it really makes sense to mute an audio clip? What's the point of your audio clip then? It's like castrating a rooster...");
+				return;
+			}
+			if (UiObjects.CurrentVideoClip == null)
+				return;
+			var clip = UiObjects.CurrentVideoClip;
+			var oldValue = clip.IsMuted;
+			var newValue = !oldValue;
+			AddUndableAction_andFireRedo(new UndoableAction
+			{
+				Redo = () =>
+				{
+					cxzxc((newValue ? "mute" : "unmute") + " clip");
+					clip.IsMuted = newValue;
+				},
+				Undo = () =>
+				{
+					cxzxc("UNDO " + (newValue ? "mute" : "unmute") + " clip");
+					clip.IsMuted = oldValue;
+				},
+			});
+		}
+
+		public void deleteAllNonlockedClips()
+		{
+			var oldClips = Proj.ClipsVideo;
+			var newClips = Proj.ClipsVideo.Where(x => x.IsLocked).ToList();
+			AddUndableAction_andFireRedo(new UndoableAction
+			{
+				Redo = () =>
+				{
+					cxzxc("Delete all non-locked clips");
+					Proj.ClipsVideo = newClips;
+				},
+				Undo = () =>
+				{
+					cxzxc("UNDO Delete all non-locked clips");
+					Proj.ClipsVideo = oldClips;
+				},
+			});
+		}
+
+		public void linearShiffleByFilename()
+		{
+			long frameOffset;
+			var beginIndex = Proj.GetVideoClipIndexAtFrame(UiObjects.CurrentMarkerFrame, out frameOffset);
+			if (beginIndex == -1)
+			{
+				cxzxc("This command only affects clips to the right of marker. Marker outside all possible clips!");
+				return;
+			}
+			var clipsBefore = Proj.ClipsVideo.Take(beginIndex);
+			var clipsAfter = Proj.ClipsVideo.Skip(beginIndex);
+			var clipsAfterGroups = clipsAfter.GroupBy(x => x.FileName);
+			var maxLength = clipsAfterGroups.Select(x => x.Count()).Max();
+			var clipsAfterShuffled = new List<VidkaClipVideo>();
+			for (int i = 0; i < maxLength; i++) {
+				foreach (var group in clipsAfterGroups) {
+					var clip = group.Skip(i).FirstOrDefault();
+					if (clip == null)
+						continue;
+					clipsAfterShuffled.Add(clip);
+				}
+			}
+
+			var newClips = clipsBefore.Union(clipsAfterShuffled).ToList();
+			var oldClips = Proj.ClipsVideo;
+			AddUndableAction_andFireRedo(new UndoableAction
+			{
+				Redo = () =>
+				{
+					cxzxc("Delete all non-locked clips");
+					Proj.ClipsVideo = newClips;
+				},
+				Undo = () =>
+				{
+					cxzxc("UNDO Delete all non-locked clips");
+					Proj.ClipsVideo = oldClips;
+				},
+			});
+		}
 
 		#endregion
 

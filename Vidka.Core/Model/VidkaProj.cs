@@ -85,6 +85,8 @@ namespace Vidka.Core.Model
 
 		public List<VidkaSubtitle> Subtitles { get; private set; }
 
+		public bool IsMuted { get; set; }
+
 		public VidkaClipVideo MakeCopy()
 		{
 			var clip = (VidkaClipVideo)this.MemberwiseClone();

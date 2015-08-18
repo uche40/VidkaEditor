@@ -41,9 +41,11 @@ namespace Vidka.Components
 		private Brush brushLightGray3 = new SolidBrush(Color.FromArgb(unchecked((int)0xFFeeeeee)));
 		private Brush brushActive = new SolidBrush(Color.LightBlue);
 		private Brush brushLockedClip = new SolidBrush(Color.Beige);
+		private Brush brushLockedActiveClip = new SolidBrush(Color.DarkKhaki);
 		private Brush brushWhite = new SolidBrush(Color.White);
 		private Brush brushHazy = new SolidBrush(Color.FromArgb(200, 230, 230, 230));
-		private Brush brushHazyCurtain = new SolidBrush(Color.FromArgb(200, 230, 230, 230)); //new SolidBrush(Color.FromArgb(200, 180, 180, 180));
+		private Brush brushHazyCurtain = new SolidBrush(Color.FromArgb(200, 245, 245, 245)); //new SolidBrush(Color.FromArgb(200, 180, 180, 180));
+		private Brush brushHazyMute = new SolidBrush(Color.FromArgb(200, 200, 200, 200)); //new SolidBrush(Color.FromArgb(200, 180, 180, 180));
 		private Font fontDefault = SystemFonts.DefaultFont;
 
 		// helpers
@@ -98,7 +100,7 @@ namespace Vidka.Components
 				g.DrawLine(penGray, scrX, y1, scrX, y2);
 				g.DrawString(ts.ToString_MinuteOrHour(), fontDefault, brushDefault, scrX+2, y1+4);
 			}
-			if (secondsPerSegment == 1)
+			if (secondsPerSegment == 1 && framesPerSegment <= proj.FrameRate)
 			{
 				// draw frame ticks as well
 				for (var i = frameStart; i < frameEnd; i++) {
@@ -142,7 +144,9 @@ namespace Vidka.Components
 					if (draggy.VideoClip != vclip)
 					{
 						var brush = brushWhite;
-						if (vclip == currentVideoClip)
+						if (vclip == currentVideoClip && vclip.IsLocked)
+							brush = brushLockedActiveClip;
+						else if (vclip == currentVideoClip)
 							brush = brushActive;
 						else if (vclip.IsLocked)
 							brush = brushLockedClip;
@@ -190,6 +194,8 @@ namespace Vidka.Components
 				len: proj.FrameToSec(vclip.LengthFrameCalc));
 			DrawWaveform(g, proj, projMapping, vclip, x1, y1 + clipvh, clipw, cliph - clipvh,
 				proj.FrameToSec(vclip.FrameStart), proj.FrameToSec(vclip.FrameEnd));
+			if (vclip.IsMuted)
+				g.FillRectangle(brushHazyMute, x1, y1 + clipvh, x2 - x1, cliph - clipvh);
 			// waveform separator
 			g.DrawLine(penGray, x1, y1 + clipvh, x2, y1 + clipvh);
 			// outline rect
@@ -385,6 +391,8 @@ namespace Vidka.Components
 			g.FillRectangle(brushActive, xOrig1, y1, xOrig2 - xOrig1, y2 - y1);
 			DrawClipBitmaps(g, proj, projMapping, vclip, 0, y1, w, yaudio - y1, 0, vclip.FileLengthSec ?? 0);
 			DrawWaveform(g, proj, projMapping, vclip, 0, yaudio, w, y2 - yaudio, 0, vclip.FileLengthSec ?? 0);
+			if (vclip.IsMuted)
+				g.FillRectangle(brushHazyMute, xOrig1, yaudio, xOrig2 - xOrig1, y2 - yaudio);
 			g.DrawLine(penGray, 0, yaudio, w, yaudio);
 			g.DrawRectangle(penDefault, 0, y1, w, y2 - y1);
 
@@ -432,8 +440,7 @@ namespace Vidka.Components
 			string waveFile = projMapping.AddGetWaveFilenameJpg(vclip.FileName);
 			if (File.Exists(waveFile))
 			{
-				Image origWave = System.Drawing.Image.FromFile(waveFile, true);
-				var bmpWave = new Bitmap(origWave);
+				Bitmap bmpWave = imgCache.getWaveImg(waveFile);//Image ot
 				var xSrc1 = (int)(bmpWave.Width * secStart / vclip.FileLengthSec); //TODO: this
 				var xSrc2 = (int)(bmpWave.Width * secEnd / vclip.FileLengthSec);
 				srcRect.X = xSrc1;
@@ -445,7 +452,6 @@ namespace Vidka.Components
 				destRect.Width = clipw;
 				destRect.Height = cliph;
 				g.DrawImage(bmpWave, destRect: destRect, srcRect: srcRect, srcUnit: GraphicsUnit.Pixel);
-				origWave.Dispose();
 			}
 		}
 

@@ -106,6 +106,7 @@ namespace Vidka.Core
 			var clipSecStart = mutex.Proj.FrameToSec(frameOffsetCustom ?? clip.FrameStart); //hacky, i know
 			var clipSecEnd = mutex.Proj.FrameToSec(clip.FrameEnd); //hacky, i know
 			mutex.CurStopPositionSec = clipSecEnd;
+			editor.SetCurrentVideoClip_ForceRepaint(clip);
 			player.PlayVideoClip(clip.FileName, clipSecStart, clipSecEnd);
 		}
 
@@ -121,6 +122,14 @@ namespace Vidka.Core
 
 			//curThread
 			
+		}
+
+		internal void SplitPerformedIncrementClipIndex()
+		{
+			lock (mutex)
+			{
+				mutex.CurClipIndex++;
+			}
 		}
 
 		public bool IsPlaying { get { return mutex.IsPlaying; } }

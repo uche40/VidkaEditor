@@ -25,7 +25,7 @@ namespace Vidka.Components.Properties {
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("100")]
+        [global::System.Configuration.DefaultSettingValueAttribute("200")]
         public int MinnimumTimelineSegmentSizeInPixels {
             get {
                 return ((int)(this["MinnimumTimelineSegmentSizeInPixels"]));
