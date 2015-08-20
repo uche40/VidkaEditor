@@ -23,6 +23,15 @@ namespace Vidka.Core
 			return string.Join(separator, list);
 		}
 
+		public static bool AreAllTheSame<T>(this IEnumerable<T> list, Func<T, T, bool> comparator)
+		{
+			if (list.Count() <= 1)
+				return true;
+			var first = list.FirstOrDefault();
+			var oneDifferent = list.Skip(1).Any(y => !comparator(first, y));
+			return !oneDifferent;
+		}
+
 		public static string ToString_MinuteOrHour(this TimeSpan ts) {
 			return ts.ToString((ts.TotalHours >= 1) ? @"hh\:mm\:ss" : @"mm\:ss");
 		}

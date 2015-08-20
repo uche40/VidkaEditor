@@ -168,8 +168,10 @@ namespace Vidka.Components {
 				Logic.ZoomIn(Width);
 			else if (e.Control && e.KeyCode == Keys.OemMinus)
 				Logic.ZoomOut(Width);
+			else if (e.Control && e.KeyCode == Keys.Space)
+				Logic.PlayPause(onlyLockedClips: true);
 			else if (e.KeyCode == Keys.Space)
-				Logic.PlayPause();
+				Logic.PlayPause(false);
 			else if (e.Control && e.Shift && e.KeyCode == Keys.B)
 				Logic.PreviewAvsSegmentInMplayer(true);
 			else if (e.Control && e.KeyCode == Keys.B)
@@ -290,8 +292,10 @@ namespace Vidka.Components {
 			});
 		}
 
-		public string OpenProjectSaveDialog() {
+		public string OpenProjectSaveDialog()
+		{
 			var dialog = new SaveFileDialog();
+			dialog.Filter = "Vidka project (*.vidka)|*.vidka|All files (*.*)|*.*";
 			var result = dialog.ShowDialog();
 			if (result == DialogResult.OK)
 				return dialog.FileName;
@@ -301,6 +305,7 @@ namespace Vidka.Components {
 		public string OpenProjectOpenDialog()
 		{
 			var dialog = new OpenFileDialog();
+			dialog.Filter = "Vidka project (*.vidka)|*.vidka|All files (*.*)|*.*";
 			var result = dialog.ShowDialog();
 			if (result == DialogResult.OK)
 				return dialog.FileName;

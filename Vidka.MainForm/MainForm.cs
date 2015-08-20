@@ -27,13 +27,15 @@ namespace Vidka.MainForm {
 		private Panel panelLeft;
 		private Panel panelPlayerHolder;
 		private VidkaFastPreviewPlayerWrapper fastPlayerWrapper;
+		private string openFirstFile;
 
 		// UI layout state
 		private VidkaPreviewMode previewMode;
 		private bool showConsole = true;
 		private PreviewPlayerAbsoluteLocation playerAbsLocation;
 
-		public MainForm() {
+		public MainForm(string[] commandLineArgs)
+		{
 			InitializeComponent();
 			CustomLayout();
 
@@ -42,6 +44,8 @@ namespace Vidka.MainForm {
 			videoShitbox.setLogic(logic);
 			videoShitbox.GuessWhoIsConsole(txtConsole);
 			vidkaFastPreviewPlayer.SetFileMapping(logic.FileMapping);
+
+			openFirstFile = commandLineArgs.FirstOrDefault();
 		}
 
 		private void MainForm_Load(object sender, EventArgs e)
@@ -60,7 +64,13 @@ namespace Vidka.MainForm {
 			setPlayerAbsoluteLocation(PreviewPlayerAbsoluteLocation.TopRight);
 
 			//==================================================================================== debug
-			logic.LoadProjFromFile(@"C:\Users\Mikhail\Desktop\asd2");
+
+			if (openFirstFile != null)
+				logic.LoadProjFromFile(openFirstFile);
+#if DEBUG
+			else
+				logic.LoadProjFromFile(@"C:\Users\Mikhail\Desktop\asd2");
+#endif
 		}
 
 		#region ------------------- callbacks ---------------------
@@ -171,7 +181,7 @@ namespace Vidka.MainForm {
 
 		private void linearShuffleToolStripMenuItem_Click(object sender, EventArgs e)
 		{
-			logic.linearShiffleByFilename();
+			logic.linearShuffleByFilename();
 		}
 
 		#endregion
@@ -194,6 +204,24 @@ namespace Vidka.MainForm {
 
 			var folder = Path.GetDirectoryName(logic.CurFileName);
 			Process.Start(folder);
+		}
+
+		private void associatevidkaFilesWithThisToolStripMenuItem_Click(object sender, EventArgs e)
+		{
+			try
+			{
+				Process adminRegHackProcess = new Process();
+				adminRegHackProcess.StartInfo.FileName = "Vidka.CreateFileAssociation.exe";
+				adminRegHackProcess.StartInfo.Arguments = String.Format("\"{0}\"", Application.ExecutablePath);
+				adminRegHackProcess.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+				adminRegHackProcess.Start();
+				MessageBox.Show("Success (maybe)", "Success", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show(ex.Message, "Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+			}
+
 		}
 
 		#endregion

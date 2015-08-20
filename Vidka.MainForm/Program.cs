@@ -11,11 +11,12 @@ namespace Vidka.MainForm
 		/// The main entry point for the application.
 		/// </summary>
 		[STAThread]
-		static void Main() {
+		static void Main(string[] args)
+		{
 			if (Environment.OSVersion.Version.Major >= 6) SetProcessDPIAware();
 			Application.EnableVisualStyles();
 			Application.SetCompatibleTextRenderingDefault(false);
-			Application.Run(new MainForm());
+			Application.Run(new MainForm(args));
 		}
 
 		[System.Runtime.InteropServices.DllImport("user32.dll")]

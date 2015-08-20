@@ -50,6 +50,8 @@ Vidka.Components/bin/*
 Vidka.Components/obj/*
 Vidka.Core/bin/*
 Vidka.Core/obj/*
+Vidka.CreateFileAssociation/bin/*
+Vidka.CreateFileAssociation/obj/*
 Vidka.MainForm/bin/*
 Vidka.MainForm/obj/*
 

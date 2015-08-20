@@ -648,7 +648,7 @@ namespace Vidka.Core
 
 		#region ============================= Playback/Feedback on WMP =============================
 
-		public void PlayPause()
+		public void PlayPause(bool onlyLockedClips=false)
 		{
 			if (!previewLauncher.IsPlaying)
 			{
@@ -661,10 +661,10 @@ namespace Vidka.Core
 						FrameEnd = clip.FileLengthFrames,
 						FileName = clip.FileName,
 					});
-					previewLauncher.StartPreviewPlayback(Proj_forOriginalPlayback, UiObjects.CurrentMarkerFrame);
+					previewLauncher.StartPreviewPlayback(Proj_forOriginalPlayback, UiObjects.CurrentMarkerFrame, false);
 				}
 				else
-					previewLauncher.StartPreviewPlayback(Proj, UiObjects.CurrentMarkerFrame);
+					previewLauncher.StartPreviewPlayback(Proj, UiObjects.CurrentMarkerFrame, onlyLockedClips);
 			}
 			else
 				previewLauncher.StopPlayback();
@@ -1170,7 +1170,7 @@ namespace Vidka.Core
 			});
 		}
 
-		public void linearShiffleByFilename()
+		public void linearShuffleByFilename()
 		{
 			long frameOffset;
 			var beginIndex = Proj.GetVideoClipIndexAtFrame(UiObjects.CurrentMarkerFrame, out frameOffset);
@@ -1182,6 +1182,13 @@ namespace Vidka.Core
 			var clipsBefore = Proj.ClipsVideo.Take(beginIndex);
 			var clipsAfter = Proj.ClipsVideo.Skip(beginIndex);
 			var clipsAfterGroups = clipsAfter.GroupBy(x => x.FileName);
+			var areAllSame = clipsAfterGroups.Select(x => x.Count()).AreAllTheSame((x, y) => (x == y));
+			if (!areAllSame)
+			{
+				editor.ShowErrorMessage("Uneven splits", "Not all videos were split into equal number of segments!\nPlease view console for details, undo, fix the problem and perform linear shuffle again.");
+				cxzxc("--- linear shuffle ---\n" + clipsAfterGroups.Select(x => Path.GetFileName(x.Key) + ": " + x.Count()).StringJoin("\n") + "\n------");
+			}
+
 			var maxLength = clipsAfterGroups.Select(x => x.Count()).Max();
 			var clipsAfterShuffled = new List<VidkaClipVideo>();
 			for (int i = 0; i < maxLength; i++) {

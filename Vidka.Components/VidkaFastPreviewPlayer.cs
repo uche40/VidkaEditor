@@ -17,6 +17,7 @@ namespace Vidka.Components
 	{
 		private Font fontDefault = SystemFonts.DefaultFont;
 		private Brush brushDefault = new SolidBrush(Color.Black);
+		private Brush brushWhite = new SolidBrush(Color.White);
 
 		private VidkaFileMapping fileMapping;
 		private double offsetSeconds;
@@ -86,8 +87,11 @@ namespace Vidka.Components
 				rectCrop.Width = ThumbnailTest.ThumbW;
 				rectCrop.Height = ThumbnailTest.ThumbH;
 				g.DrawImage(bmpThumbs, rectMe, rectCrop, GraphicsUnit.Pixel);
+				var strFilename = Path.GetFileName(filenameVideo);
+				var sizeF = g.MeasureString(strFilename, fontDefault);
+				g.FillRectangle(brushWhite, 0, 0, sizeF.Width, sizeF.Height);
+				g.DrawString(strFilename, fontDefault, brushDefault, 0, 0);
 			}
-			//g.DrawString(Path.GetFileName(filenameVideo) + ":" + imageIndex, fontDefault, brushDefault, 10, 20);
 		}
 
 	}

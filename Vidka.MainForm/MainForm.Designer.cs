@@ -52,6 +52,7 @@
 			this.vidkaFastPreviewPlayer = new Vidka.Components.VidkaFastPreviewPlayer();
 			this.videoShitbox = new Vidka.Components.VideoShitbox();
 			this.vidkaPreviewPlayer = new Vidka.Components.VidkaPreviewPlayer();
+			this.associatevidkaFilesWithThisToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.menuStrip1.SuspendLayout();
 			this.SuspendLayout();
 			// 
@@ -199,7 +200,8 @@
 			// 
 			this.helpToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.viewOnGithubToolStripMenuItem,
-            this.whereIsTheCurrentFileToolStripMenuItem});
+            this.whereIsTheCurrentFileToolStripMenuItem,
+            this.associatevidkaFilesWithThisToolStripMenuItem});
 			this.helpToolStripMenuItem.Name = "helpToolStripMenuItem";
 			this.helpToolStripMenuItem.Size = new System.Drawing.Size(92, 48);
 			this.helpToolStripMenuItem.Text = "Help";
@@ -207,14 +209,14 @@
 			// viewOnGithubToolStripMenuItem
 			// 
 			this.viewOnGithubToolStripMenuItem.Name = "viewOnGithubToolStripMenuItem";
-			this.viewOnGithubToolStripMenuItem.Size = new System.Drawing.Size(424, 46);
+			this.viewOnGithubToolStripMenuItem.Size = new System.Drawing.Size(484, 46);
 			this.viewOnGithubToolStripMenuItem.Text = "View on Github";
 			this.viewOnGithubToolStripMenuItem.Click += new System.EventHandler(this.viewOnGithubToolStripMenuItem_Click);
 			// 
 			// whereIsTheCurrentFileToolStripMenuItem
 			// 
 			this.whereIsTheCurrentFileToolStripMenuItem.Name = "whereIsTheCurrentFileToolStripMenuItem";
-			this.whereIsTheCurrentFileToolStripMenuItem.Size = new System.Drawing.Size(424, 46);
+			this.whereIsTheCurrentFileToolStripMenuItem.Size = new System.Drawing.Size(484, 46);
 			this.whereIsTheCurrentFileToolStripMenuItem.Text = "Where is the current file?";
 			this.whereIsTheCurrentFileToolStripMenuItem.Click += new System.EventHandler(this.whereIsTheCurrentFileToolStripMenuItem_Click);
 			// 
@@ -255,6 +257,13 @@
 			this.vidkaPreviewPlayer.Name = "vidkaPreviewPlayer";
 			this.vidkaPreviewPlayer.Size = new System.Drawing.Size(634, 417);
 			this.vidkaPreviewPlayer.TabIndex = 1;
+			// 
+			// associatevidkaFilesWithThisToolStripMenuItem
+			// 
+			this.associatevidkaFilesWithThisToolStripMenuItem.Name = "associatevidkaFilesWithThisToolStripMenuItem";
+			this.associatevidkaFilesWithThisToolStripMenuItem.Size = new System.Drawing.Size(484, 46);
+			this.associatevidkaFilesWithThisToolStripMenuItem.Text = "Associate .vidka files with this";
+			this.associatevidkaFilesWithThisToolStripMenuItem.Click += new System.EventHandler(this.associatevidkaFilesWithThisToolStripMenuItem_Click);
 			// 
 			// MainForm
 			// 
@@ -302,6 +311,7 @@
 		private System.Windows.Forms.ToolStripMenuItem opsToolStripMenuItem;
 		private System.Windows.Forms.ToolStripMenuItem deleteAllNonlockedClipsToolStripMenuItem;
 		private System.Windows.Forms.ToolStripMenuItem linearShuffleToolStripMenuItem;
+		private System.Windows.Forms.ToolStripMenuItem associatevidkaFilesWithThisToolStripMenuItem;
 	}
 }
 

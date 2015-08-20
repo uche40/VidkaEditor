@@ -20,6 +20,8 @@ namespace Vidka.Core
 		// both of these used for frame marker positioning
 		public long CurClipAbsFrameLeft { get; set; }
 		public long CurClipStartFrame { get; set; }
+
+		public bool OnlyLockedClips { get; set; }
 	}
 
 	public class PreviewThreadLauncher
@@ -49,18 +51,23 @@ namespace Vidka.Core
 			this.player = videoPlayer;
 		}
 
-		public void StartPreviewPlayback(VidkaProj proj, long frameStart)
+		public void StartPreviewPlayback(VidkaProj proj, long frameStart, bool onlyLockedClips)
 		{
 			lock (mutex)
 			{
 				// ... what we are going to play
 				long frameOffset;
 				var curClipIndex = proj.GetVideoClipIndexAtFrame(frameStart, out frameOffset);
-				if (curClipIndex == -1)
+				var clip = onlyLockedClips
+					? proj.GetNextLockedVideoClipStartingAtIndex(curClipIndex, out curClipIndex)
+					: proj.GetVideoClipAtIndex(curClipIndex);
+				if (clip == null) {
+					editor.AppendToConsole(VidkaConsoleLogLevel.Info, "Nothing to play!");
 					return;
-				var clip = proj.ClipsVideo[curClipIndex];
+				}
 				// ... set up mutex
 				mutex.Proj = proj;
+				mutex.OnlyLockedClips = onlyLockedClips;
 				mutex.IsPlaying = true;
 				mutex.CurClipIndex = curClipIndex;
 				mutex.CurFrame = frameStart;
@@ -82,8 +89,11 @@ namespace Vidka.Core
 				editor.SetFrameMarker_ForceRepaint(frameMarkerPosition);
 				if (secCurClip >= mutex.CurStopPositionSec - STOP_BEFORE_THRESH || player.IsStopped())
 				{
-					mutex.CurClipIndex++;
-					var clip = mutex.Proj.GetVideoClipAtIndex(mutex.CurClipIndex);
+					var newIndex = mutex.CurClipIndex + 1;
+					var clip = mutex.OnlyLockedClips
+						? mutex.Proj.GetNextLockedVideoClipStartingAtIndex(newIndex, out newIndex)
+						: mutex.Proj.GetVideoClipAtIndex(newIndex);
+					mutex.CurClipIndex = newIndex;
 					if (clip == null)
 					{
 						StopPlayback();

@@ -57,6 +57,21 @@ namespace Vidka.Core.Model
 		}
 
 		/// <summary>
+		/// returns clip at index, if it is locked, and, if not, looks for the next clip
+		/// returns null if index is out of bounds
+		/// </summary>
+		public static VidkaClipVideo GetNextLockedVideoClipStartingAtIndex(this VidkaProj proj, int index, out int newIndex)
+		{
+			newIndex = -1;
+			if (index < 0 || index >= proj.ClipsVideo.Count)
+				return null;
+			var clip = proj.ClipsVideo.Skip(index).FirstOrDefault(x => x.IsLocked);
+			if (clip != null)
+				newIndex = proj.ClipsVideo.IndexOf(clip);
+			return clip;
+		}
+
+		/// <summary>
 		/// returns either the first or last clip if index is out of bounds respectively.
 		/// If there are no clips at all, returns null
 		/// </summary>
